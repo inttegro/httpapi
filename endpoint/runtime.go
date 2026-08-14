@@ -54,6 +54,7 @@ type Endpoint struct {
 	accepts           []ContentType
 	method            HttpMethod
 	pattern           string
+	aliases           []AliasSpec
 	handler           http.HandlerFunc
 	rawHandler        Handler
 	idempotent        bool

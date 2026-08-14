@@ -154,6 +154,50 @@ func TestTranscribeUsesRouteSpecBackendAndGroupDefaults(t *testing.T) {
 	}
 }
 
+func TestTranscribeEndpointAliasesUseSameBackendAndRouteOperationIDs(t *testing.T) {
+	paths, err := Transcriber{
+		DefaultBackend: endpointpkg.RouteBackend{
+			Address: "https://service.example.internal",
+		},
+	}.TranscribeEndpoint(endpointpkg.DefineEndpoint(endpointpkg.EndpointSpec{
+		Method: endpointpkg.POST,
+		Path:   "/orders/create",
+		Aliases: []endpointpkg.AliasSpec{
+			{Path: "/orders/new"},
+		},
+		Handler: noopGCPGatewayHandler,
+		Operation: endpointpkg.OperationSpec{
+			ID:      "createOrder",
+			Summary: "Create order",
+		},
+	}))
+	if err != nil {
+		t.Fatalf("TranscribeEndpoint() error = %v", err)
+	}
+
+	canonical := paths["/orders/create"].Post
+	if canonical == nil {
+		t.Fatal("canonical operation missing")
+	}
+	if canonical.OperationID != "createOrder" {
+		t.Fatalf("canonical operation id = %q, want createOrder", canonical.OperationID)
+	}
+
+	alias := paths["/orders/new"].Post
+	if alias == nil {
+		t.Fatal("alias operation missing")
+	}
+	if alias.OperationID != "createOrderAlias" {
+		t.Fatalf("alias operation id = %q, want createOrderAlias", alias.OperationID)
+	}
+	if alias.Summary != "Create order" {
+		t.Fatalf("alias summary = %q, want Create order", alias.Summary)
+	}
+	if operationBackend(t, *alias).Address != "https://service.example.internal" {
+		t.Fatalf("alias backend = %#v", operationBackend(t, *alias))
+	}
+}
+
 func TestTranscribeRejectsBackendTimeoutAboveGatewayLimit(t *testing.T) {
 	_, err := Transcriber{}.TranscribeEndpoint(endpointpkg.NewEndpoint(
 		endpointpkg.POST,

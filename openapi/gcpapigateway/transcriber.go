@@ -182,9 +182,13 @@ func (t Transcriber) transcribe(routes internalroute.Routes) (spec.Paths, error)
 	}
 
 	paths := spec.Paths{}
+	operationIDs := map[string]internalroute.Route{}
 	for _, route := range routes {
 		operation, err := t.operationForRoute(route)
 		if err != nil {
+			return nil, err
+		}
+		if err := ensureUniqueOperationID(operationIDs, operation.OperationID, route); err != nil {
 			return nil, err
 		}
 		if err := paths.AddOperation(route.Path, route.Method, operation); err != nil {
@@ -245,7 +249,7 @@ func (t Transcriber) operationForRoute(route internalroute.Route) (spec.Operatio
 	}
 
 	operation := spec.Operation{
-		OperationID: defaultOperationID(route.Method, route.Path),
+		OperationID: operationIDForRoute(route),
 		Summary:     fmt.Sprintf("%s %s", route.Method, route.Path),
 		Parameters:  parametersForEndpoint(route.Endpoint),
 		Consumes:    contentTypesForOpenAPI(route.Endpoint.AcceptedContentTypes()),
@@ -254,9 +258,6 @@ func (t Transcriber) operationForRoute(route internalroute.Route) (spec.Operatio
 	}
 	if err := operation.SetExtension(BackendExtensionName, backend); err != nil {
 		return spec.Operation{}, err
-	}
-	if operationSpec.ID != "" {
-		operation.OperationID = operationSpec.ID
 	}
 	if operationSpec.Summary != "" {
 		operation.Summary = operationSpec.Summary
@@ -278,6 +279,51 @@ func (t Transcriber) operationForRoute(route internalroute.Route) (spec.Operatio
 	}
 
 	return operation, nil
+}
+
+func operationIDForRoute(route internalroute.Route) string {
+	operationSpec := route.Endpoint.Operation()
+	if route.Alias == nil {
+		if operationSpec.ID != "" {
+			return operationSpec.ID
+		}
+		return defaultOperationID(route.Method, route.Path)
+	}
+	if route.Alias.OperationID != "" {
+		return route.Alias.OperationID
+	}
+
+	canonicalID := operationSpec.ID
+	if canonicalID == "" {
+		canonicalPath := route.CanonicalPath
+		if canonicalPath == "" {
+			canonicalPath = route.Path
+		}
+		canonicalID = defaultOperationID(route.Method, canonicalPath)
+	}
+
+	return canonicalID + "Alias"
+}
+
+func ensureUniqueOperationID(
+	seen map[string]internalroute.Route,
+	operationID string,
+	route internalroute.Route,
+) error {
+	operationID = strings.TrimSpace(operationID)
+	if operationID == "" {
+		return nil
+	}
+	if existing, ok := seen[operationID]; ok {
+		return fmt.Errorf(
+			"gcpapigateway: duplicate operation id %q for %s %s and %s %s",
+			operationID,
+			existing.Method, existing.Path,
+			route.Method, route.Path,
+		)
+	}
+	seen[operationID] = route
+	return nil
 }
 
 func (t Transcriber) gatewayBackend(backend endpointpkg.RouteBackend) (Backend, error) {

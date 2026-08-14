@@ -143,6 +143,60 @@ func TestDefineEndpointDefaults(t *testing.T) {
 	}
 }
 
+func TestDefineEndpointNormalizesAndClonesAliases(t *testing.T) {
+	aliases := []AliasSpec{
+		{Path: " /orders/new ", OperationID: " createOrderAlias "},
+		Alias(" /orders/legacy ").WithOperationID(" legacyCreateOrder "),
+	}
+	endpoint := DefineEndpoint(EndpointSpec{
+		Method:  POST,
+		Path:    "/orders/create",
+		Aliases: aliases,
+		Handler: noopTranscriptionHandler,
+	})
+	aliases[0].Path = "/mutated"
+	aliases[0].OperationID = "mutated"
+
+	got := endpoint.Aliases()
+	if len(got) != 2 {
+		t.Fatalf("aliases = %d, want 2", len(got))
+	}
+	if got[0].Path != "/orders/new" {
+		t.Fatalf("first alias path = %q, want /orders/new", got[0].Path)
+	}
+	if got[0].OperationID != "createOrderAlias" {
+		t.Fatalf("first alias operation id = %q, want createOrderAlias", got[0].OperationID)
+	}
+	if got[1].Path != "/orders/legacy" {
+		t.Fatalf("second alias path = %q, want /orders/legacy", got[1].Path)
+	}
+	if got[1].OperationID != "legacyCreateOrder" {
+		t.Fatalf("second alias operation id = %q, want legacyCreateOrder", got[1].OperationID)
+	}
+
+	got[0].Path = "/mutated"
+	got[0].OperationID = "mutated"
+	if got := endpoint.Aliases(); got[0].Path != "/orders/new" ||
+		got[0].OperationID != "createOrderAlias" {
+		t.Fatalf("alias accessor exposed mutable state: %#v", got[0])
+	}
+}
+
+func TestDefineEndpointRejectsEmptyAliasPath(t *testing.T) {
+	defer func() {
+		if recovered := recover(); recovered == nil {
+			t.Fatal("DefineEndpoint did not panic")
+		}
+	}()
+
+	DefineEndpoint(EndpointSpec{
+		Method:  POST,
+		Path:    "/orders/create",
+		Aliases: []AliasSpec{{Path: " "}},
+		Handler: noopTranscriptionHandler,
+	})
+}
+
 func TestDefineEndpointAcceptsMultipleContentTypes(t *testing.T) {
 	endpoint := DefineEndpoint(EndpointSpec{
 		Method: GET,

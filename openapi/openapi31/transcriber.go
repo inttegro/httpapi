@@ -130,12 +130,16 @@ func (t Transcriber) transcribe(routes internalroute.Routes) (spec.Paths, error)
 	}
 
 	paths := spec.Paths{}
+	operationIDs := map[string]internalroute.Route{}
 	for _, route := range routes {
 		if route.Endpoint.IsInternal() {
 			continue
 		}
 		operation, err := operationForRoute(route)
 		if err != nil {
+			return nil, err
+		}
+		if err := ensureUniqueOperationID(operationIDs, operation.OperationID, route); err != nil {
 			return nil, err
 		}
 		if err := paths.AddOperation(route.Path, route.Method, operation); err != nil {
@@ -194,13 +198,10 @@ func (t Transcriber) documentServers() []spec.Server {
 func operationForRoute(route internalroute.Route) (spec.Operation, error) {
 	operationSpec := route.Endpoint.Operation()
 	operation := spec.Operation{
-		OperationID: defaultOperationID(route.Method, route.Path),
+		OperationID: operationIDForRoute(route),
 		Summary:     fmt.Sprintf("%s %s", route.Method, route.Path),
 		RequestBody: requestBodyForEndpoint(route.Endpoint),
 		Responses:   responsesForEndpoint(route.Endpoint),
-	}
-	if operationSpec.ID != "" {
-		operation.OperationID = operationSpec.ID
 	}
 	if operationSpec.Summary != "" {
 		operation.Summary = operationSpec.Summary
@@ -217,6 +218,51 @@ func operationForRoute(route internalroute.Route) (spec.Operation, error) {
 	}
 
 	return operation, nil
+}
+
+func operationIDForRoute(route internalroute.Route) string {
+	operationSpec := route.Endpoint.Operation()
+	if route.Alias == nil {
+		if operationSpec.ID != "" {
+			return operationSpec.ID
+		}
+		return defaultOperationID(route.Method, route.Path)
+	}
+	if route.Alias.OperationID != "" {
+		return route.Alias.OperationID
+	}
+
+	canonicalID := operationSpec.ID
+	if canonicalID == "" {
+		canonicalPath := route.CanonicalPath
+		if canonicalPath == "" {
+			canonicalPath = route.Path
+		}
+		canonicalID = defaultOperationID(route.Method, canonicalPath)
+	}
+
+	return canonicalID + "Alias"
+}
+
+func ensureUniqueOperationID(
+	seen map[string]internalroute.Route,
+	operationID string,
+	route internalroute.Route,
+) error {
+	operationID = strings.TrimSpace(operationID)
+	if operationID == "" {
+		return nil
+	}
+	if existing, ok := seen[operationID]; ok {
+		return fmt.Errorf(
+			"openapi31: duplicate operation id %q for %s %s and %s %s",
+			operationID,
+			existing.Method, existing.Path,
+			route.Method, route.Path,
+		)
+	}
+	seen[operationID] = route
+	return nil
 }
 
 func placeholderResponses() map[string]spec.Response {

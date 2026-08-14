@@ -23,6 +23,11 @@ type JSONEndpointSpec[T any] struct {
 	// to transcribers.
 	Path string
 
+	// Aliases are additional route patterns for the same endpoint behavior.
+	// They do not duplicate handlers, request/response contracts, access policy,
+	// idempotency, limits, timeouts, or other runtime behavior.
+	Aliases []AliasSpec
+
 	// Request is the JSON request parser and documentation contract.
 	Request *parampkg.Request[T]
 
@@ -139,6 +144,7 @@ func DefineJSONEndpoint[T any](spec JSONEndpointSpec[T]) Endpoint {
 	return DefineEndpoint(EndpointSpec{
 		Method:         spec.Method,
 		Path:           spec.Path,
+		Aliases:        spec.Aliases,
 		Handler:        handlerFromJSONEndpointSpec(spec),
 		Accepts:        spec.Accepts,
 		AcceptsAny:     spec.AcceptsAny,

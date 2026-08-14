@@ -16,6 +16,11 @@ type EndpointSpec struct {
 	// to transcribers.
 	Path string
 
+	// Aliases are additional route patterns for the same endpoint behavior.
+	// They do not duplicate handlers, request/response contracts, access policy,
+	// idempotency, limits, timeouts, or other runtime behavior.
+	Aliases []AliasSpec
+
 	// Handler is the compatibility application function invoked after httpapi
 	// has parsed the request, authenticated it, applied access policy, and
 	// enforced idempotency.
@@ -124,6 +129,7 @@ func endpointFromSpec(spec EndpointSpec) Endpoint {
 	return Endpoint{
 		method:     normalizeEndpointMethod(spec.Method),
 		pattern:    spec.Path,
+		aliases:    normalizeAliasSpecs(spec.Aliases),
 		accepts:    normalizeEndpointContentTypes(spec.Accepts, spec.AcceptsAny...),
 		rawHandler: handler,
 		idempotent: idempotent,

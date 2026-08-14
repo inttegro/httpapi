@@ -42,6 +42,9 @@ type MountedEndpoint struct {
 
 	// Endpoint is the mounted endpoint with inherited group metadata applied.
 	Endpoint Endpoint
+
+	// Alias is set when Path is an alias route for Endpoint.
+	Alias *AliasSpec
 }
 
 // ErrDuplicateMuxRoute reports that a method/path pair was mounted more than
@@ -149,7 +152,11 @@ func (mux *Mux) MountedEndpoints() []MountedEndpoint {
 		return nil
 	}
 
-	return append([]MountedEndpoint(nil), mux.mounted...)
+	mounted := make([]MountedEndpoint, 0, len(mux.mounted))
+	for _, endpoint := range mux.mounted {
+		mounted = append(mounted, cloneMountedEndpoint(endpoint))
+	}
+	return mounted
 }
 
 // Groups returns the endpoint groups mounted through this mux.
@@ -233,6 +240,16 @@ func mountedEndpointsForGroup(group EndpointGroup) []MountedEndpoint {
 			Path:     path,
 			Endpoint: endpoint,
 		})
+		for _, alias := range endpoint.Aliases() {
+			aliasPath := mountedEndpointPath(group.PathPrefix, alias.Path)
+			alias := alias
+			mounted = append(mounted, MountedEndpoint{
+				Method:   endpoint.method,
+				Path:     aliasPath,
+				Endpoint: endpoint,
+				Alias:    &alias,
+			})
+		}
 	}
 
 	return mounted
@@ -259,4 +276,13 @@ func mountedEndpointPath(prefix, pattern string) string {
 
 func muxRouteKey(method HttpMethod, path string) string {
 	return fmt.Sprintf("%s %s", method, path)
+}
+
+func cloneMountedEndpoint(mounted MountedEndpoint) MountedEndpoint {
+	if mounted.Alias == nil {
+		return mounted
+	}
+	alias := *mounted.Alias
+	mounted.Alias = &alias
+	return mounted
 }

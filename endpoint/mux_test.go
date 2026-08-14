@@ -90,6 +90,66 @@ func TestMuxMountAppliesGroupDefaults(t *testing.T) {
 	}
 }
 
+func TestMuxMountServesEndpointAliasesAndRecordsMetadata(t *testing.T) {
+	mux := NewMux()
+	group := EndpointGroup{
+		PathPrefix: "/orders",
+		Endpoints: []Endpoint{
+			DefineEndpoint(EndpointSpec{
+				Method: GET,
+				Path:   "/create",
+				Aliases: []AliasSpec{
+					{Path: "/new"},
+				},
+				Handler: func(r *Req) {
+					responsepkg.RenderJSON(r, http.StatusOK, map[string]string{
+						"path": r.Path(),
+					})
+				},
+			}),
+		},
+	}
+
+	if err := mux.Mount(group); err != nil {
+		t.Fatalf("mount group: %v", err)
+	}
+
+	for _, path := range []string{"/orders/create", "/orders/new"} {
+		rec := httptest.NewRecorder()
+		req := httptest.NewRequest(GET, path, nil)
+		mux.ServeHTTP(rec, req)
+
+		if rec.Code != http.StatusOK {
+			t.Fatalf("%s status = %d, want 200; body=%s", path, rec.Code, rec.Body.String())
+		}
+		if !strings.Contains(rec.Body.String(), `"path":"`+path+`"`) {
+			t.Fatalf("%s body = %s, want matched path", path, rec.Body.String())
+		}
+	}
+
+	mounted := mux.MountedEndpoints()
+	if len(mounted) != 2 {
+		t.Fatalf("mounted endpoints = %d, want 2", len(mounted))
+	}
+	if mounted[0].Path != "/orders/create" || mounted[0].Alias != nil {
+		t.Fatalf("canonical mounted endpoint = %#v", mounted[0])
+	}
+	if mounted[1].Path != "/orders/new" || mounted[1].Alias == nil {
+		t.Fatalf("alias mounted endpoint = %#v", mounted[1])
+	}
+	if mounted[1].Alias.Path != "/new" {
+		t.Fatalf("alias spec path = %q, want /new", mounted[1].Alias.Path)
+	}
+	if mounted[1].Endpoint.Pattern() != "/create" {
+		t.Fatalf("alias endpoint pattern = %q, want /create", mounted[1].Endpoint.Pattern())
+	}
+
+	mounted[1].Alias.Path = "/mutated"
+	if got := mux.MountedEndpoints(); got[1].Alias.Path != "/new" {
+		t.Fatalf("mounted alias accessor exposed mutable state: %#v", got[1].Alias)
+	}
+}
+
 func TestMuxMountRejectsDuplicateWithinBatchWithoutRegistering(t *testing.T) {
 	mux := NewMux()
 	group := EndpointGroup{
@@ -117,6 +177,37 @@ func TestMuxMountRejectsDuplicateWithinBatchWithoutRegistering(t *testing.T) {
 	mux.ServeHTTP(rec, req)
 	if rec.Code != http.StatusNotFound {
 		t.Fatalf("status = %d, want 404 after rejected batch", rec.Code)
+	}
+}
+
+func TestMuxMountRejectsAliasRouteCollisionWithoutRegistering(t *testing.T) {
+	mux := NewMux()
+	group := EndpointGroup{
+		PathPrefix: "/orders",
+		Endpoints: []Endpoint{
+			DefineEndpoint(EndpointSpec{
+				Method:  GET,
+				Path:    "/create",
+				Aliases: []AliasSpec{{Path: "/new"}},
+				Handler: noopTranscriptionHandler,
+			}),
+			jsonEndpoint(GET, "/new", map[string]int{"version": 2}),
+		},
+	}
+
+	err := mux.Mount(group)
+	if err == nil {
+		t.Fatal("expected duplicate mount error")
+	}
+	var duplicate ErrDuplicateMuxRoute
+	if !errors.As(err, &duplicate) {
+		t.Fatalf("error = %T %v, want ErrDuplicateMuxRoute", err, err)
+	}
+	if duplicate.Path != "/orders/new" || duplicate.Method != GET {
+		t.Fatalf("duplicate route = %#v, want GET /orders/new", duplicate)
+	}
+	if len(mux.MountedEndpoints()) != 0 {
+		t.Fatalf("mounted endpoints = %d, want 0", len(mux.MountedEndpoints()))
 	}
 }
 

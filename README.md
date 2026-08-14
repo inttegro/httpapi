@@ -471,6 +471,9 @@ The struct keeps the endpoint contract in one readable place.
 var CreateTask = endpoint.DefineEndpoint(endpoint.EndpointSpec{
 	Method: endpoint.POST,
 	Path:   "/tasks/create",
+	Aliases: []endpoint.AliasSpec{
+		endpoint.Alias("/tasks/new"),
+	},
 	Handler: func(r *endpoint.Req) {
 		params, err := createTaskRequest.Parse(r.Body, param.WithRequestCaller(r))
 		if err != nil {
@@ -526,6 +529,30 @@ cost accounting; when it is empty, completion cost events fall back to
 `METHOD pattern`. `Route` is routing/backend metadata only. Transcribers can
 only produce complete documents when the endpoint contract carries the relevant
 metadata.
+
+Use aliases when an existing endpoint needs an additional route while keeping
+one handler and one endpoint contract. The canonical route keeps
+`Operation.ID`; alias routes get `<operation_id>Alias` in generated documents
+unless the alias sets an explicit operation ID:
+
+```go
+var CreateTask = endpoint.DefineEndpoint(endpoint.EndpointSpec{
+	Method: endpoint.POST,
+	Path:   "/tasks/create",
+	Aliases: []endpoint.AliasSpec{
+		endpoint.Alias("/tasks/new"),
+		endpoint.Alias("/tasks/legacy_create").WithOperationID("legacyCreateTask"),
+	},
+	Handler: createTask,
+	Operation: endpoint.OperationSpec{
+		ID: "createTask",
+	},
+})
+```
+
+Aliases are route-level metadata only. They share the endpoint's request,
+response, auth, caller availability, idempotency, timeout, limit, accounting,
+and backend route behavior.
 
 `NewEndpoint`, `NewIdempotentEndpoint`, and
 `NewIdempotentEndpointWithScopeResolver` remain for compatibility. New code

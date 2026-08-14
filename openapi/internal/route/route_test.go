@@ -64,4 +64,65 @@ func TestRoutesWithPathPrefix(t *testing.T) {
 	}
 }
 
+func TestFromGroupExpandsAliasRoutes(t *testing.T) {
+	group := endpointpkg.EndpointGroup{PathPrefix: "orders"}
+	group.Add(endpointpkg.DefineEndpoint(endpointpkg.EndpointSpec{
+		Method: endpointpkg.POST,
+		Path:   "/create",
+		Aliases: []endpointpkg.AliasSpec{
+			{Path: "/new"},
+			{Path: "/legacy", OperationID: "legacyCreateOrder"},
+		},
+		Handler: noopRouteHandler,
+	}))
+
+	routes, err := FromGroup(group)
+	if err != nil {
+		t.Fatalf("FromGroup() error = %v", err)
+	}
+	if len(routes) != 3 {
+		t.Fatalf("route count = %d, want 3", len(routes))
+	}
+	if routes[0].Path != "/orders/create" || routes[0].CanonicalPath != "/orders/create" ||
+		routes[0].Alias != nil {
+		t.Fatalf("canonical route = %#v", routes[0])
+	}
+	if routes[1].Path != "/orders/new" || routes[1].CanonicalPath != "/orders/create" ||
+		routes[1].Alias == nil || routes[1].Alias.Path != "/new" {
+		t.Fatalf("first alias route = %#v", routes[1])
+	}
+	if routes[2].Path != "/orders/legacy" || routes[2].CanonicalPath != "/orders/create" ||
+		routes[2].Alias == nil || routes[2].Alias.OperationID != "legacyCreateOrder" {
+		t.Fatalf("second alias route = %#v", routes[2])
+	}
+}
+
+func TestRoutesWithPathPrefixPreservesAliasCanonicalPath(t *testing.T) {
+	routes, err := FromEndpoint(endpointpkg.DefineEndpoint(endpointpkg.EndpointSpec{
+		Method:  endpointpkg.POST,
+		Path:    "/orders/create",
+		Aliases: []endpointpkg.AliasSpec{{Path: "/orders/new"}},
+		Handler: noopRouteHandler,
+	}))
+	if err != nil {
+		t.Fatalf("FromEndpoint() error = %v", err)
+	}
+
+	routes, err = routes.WithPathPrefix("/v1")
+	if err != nil {
+		t.Fatalf("WithPathPrefix() error = %v", err)
+	}
+	if len(routes) != 2 {
+		t.Fatalf("routes = %d, want 2", len(routes))
+	}
+	if routes[0].Path != "/v1/orders/create" ||
+		routes[0].CanonicalPath != "/v1/orders/create" {
+		t.Fatalf("canonical route = %#v", routes[0])
+	}
+	if routes[1].Path != "/v1/orders/new" ||
+		routes[1].CanonicalPath != "/v1/orders/create" {
+		t.Fatalf("alias route = %#v", routes[1])
+	}
+}
+
 func noopRouteHandler(*endpointpkg.Req) {}

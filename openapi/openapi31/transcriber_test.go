@@ -165,6 +165,113 @@ func TestTranscribeUsesEndpointRequestAndResponseContracts(t *testing.T) {
 	}
 }
 
+func TestTranscribeEndpointAliasesUseRouteOperationIDs(t *testing.T) {
+	paths, err := Transcriber{}.TranscribeEndpoint(endpointpkg.DefineEndpoint(endpointpkg.EndpointSpec{
+		Method: endpointpkg.POST,
+		Path:   "/orders/create",
+		Aliases: []endpointpkg.AliasSpec{
+			{Path: "/orders/new"},
+			{Path: "/orders/legacy", OperationID: "legacyCreateOrder"},
+		},
+		Handler: noopOpenAPI31Handler,
+		Operation: endpointpkg.OperationSpec{
+			ID:      "createOrder",
+			Summary: "Create order",
+		},
+	}))
+	if err != nil {
+		t.Fatalf("TranscribeEndpoint() error = %v", err)
+	}
+
+	canonical := paths["/orders/create"].Post
+	if canonical == nil {
+		t.Fatal("canonical operation missing")
+	}
+	if canonical.OperationID != "createOrder" {
+		t.Fatalf("canonical operation id = %q, want createOrder", canonical.OperationID)
+	}
+
+	alias := paths["/orders/new"].Post
+	if alias == nil {
+		t.Fatal("alias operation missing")
+	}
+	if alias.OperationID != "createOrderAlias" {
+		t.Fatalf("alias operation id = %q, want createOrderAlias", alias.OperationID)
+	}
+	if alias.Summary != "Create order" {
+		t.Fatalf("alias summary = %q, want Create order", alias.Summary)
+	}
+
+	explicitAlias := paths["/orders/legacy"].Post
+	if explicitAlias == nil {
+		t.Fatal("explicit alias operation missing")
+	}
+	if explicitAlias.OperationID != "legacyCreateOrder" {
+		t.Fatalf("explicit alias operation id = %q, want legacyCreateOrder", explicitAlias.OperationID)
+	}
+}
+
+func TestTranscribeEndpointAliasDefaultOperationIDUsesCanonicalPath(t *testing.T) {
+	paths, err := Transcriber{PathPrefix: "/v1"}.TranscribeEndpoint(
+		endpointpkg.DefineEndpoint(endpointpkg.EndpointSpec{
+			Method:  endpointpkg.POST,
+			Path:    "/orders/create",
+			Aliases: []endpointpkg.AliasSpec{{Path: "/orders/new"}},
+			Handler: noopOpenAPI31Handler,
+		}),
+	)
+	if err != nil {
+		t.Fatalf("TranscribeEndpoint() error = %v", err)
+	}
+
+	alias := paths["/v1/orders/new"].Post
+	if alias == nil {
+		t.Fatal("alias operation missing")
+	}
+	if alias.OperationID != "post_v1_orders_createAlias" {
+		t.Fatalf("alias operation id = %q, want post_v1_orders_createAlias", alias.OperationID)
+	}
+}
+
+func TestTranscribeRejectsDuplicateAliasOperationIDs(t *testing.T) {
+	_, err := Transcriber{}.TranscribeEndpoint(endpointpkg.DefineEndpoint(endpointpkg.EndpointSpec{
+		Method: endpointpkg.POST,
+		Path:   "/orders/create",
+		Aliases: []endpointpkg.AliasSpec{
+			{Path: "/orders/new"},
+			{Path: "/orders/legacy"},
+		},
+		Handler: noopOpenAPI31Handler,
+		Operation: endpointpkg.OperationSpec{
+			ID: "createOrder",
+		},
+	}))
+	if err == nil {
+		t.Fatal("expected duplicate operation id error")
+	}
+	if !strings.Contains(err.Error(), `duplicate operation id "createOrderAlias"`) {
+		t.Fatalf("error = %v, want duplicate createOrderAlias", err)
+	}
+}
+
+func TestTranscribeRejectsAliasPathCollision(t *testing.T) {
+	_, err := Transcriber{}.TranscribeEndpoint(endpointpkg.DefineEndpoint(endpointpkg.EndpointSpec{
+		Method:  endpointpkg.POST,
+		Path:    "/orders/create",
+		Aliases: []endpointpkg.AliasSpec{{Path: "/orders/create"}},
+		Handler: noopOpenAPI31Handler,
+		Operation: endpointpkg.OperationSpec{
+			ID: "createOrder",
+		},
+	}))
+	if err == nil {
+		t.Fatal("expected duplicate path operation error")
+	}
+	if !strings.Contains(err.Error(), "duplicate POST operation") {
+		t.Fatalf("error = %v, want duplicate POST operation", err)
+	}
+}
+
 func TestTranscribeWithPathPrefix(t *testing.T) {
 	group := endpointpkg.EndpointGroup{PathPrefix: "orders"}
 	group.Add(endpointpkg.NewEndpoint(endpointpkg.POST, "", noopOpenAPI31Handler))
