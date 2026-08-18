@@ -46,7 +46,10 @@ func (e Endpoint) accessError(r *Req) *errresp.Error {
 	}
 
 	if !policy.auth.Required {
-		return e.callerAccessError(r, policy)
+		if err := e.callerAccessError(r, policy); err != nil {
+			return err
+		}
+		return e.controlAccessError(r)
 	}
 
 	if r == nil || r.Sess == nil || !r.Authorized() {
@@ -60,7 +63,10 @@ func (e Endpoint) accessError(r *Req) *errresp.Error {
 	}
 
 	if sessionSatisfiesAuthorization(r.Sess, policy.auth.Kind) {
-		return e.callerAccessError(r, policy)
+		if err := e.callerAccessError(r, policy); err != nil {
+			return err
+		}
+		return e.controlAccessError(r)
 	}
 
 	err := errresp.Forbidden(

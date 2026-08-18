@@ -65,6 +65,7 @@ type Endpoint struct {
 	priority          endpointPriorityPolicy
 	timeout           endpointTimeoutPolicy
 	limits            endpointLimitsPolicy
+	controls          endpointControlPolicy
 	requestContract   RequestContract
 	responseContracts []ResponseContract
 	authKeys          map[string]bool

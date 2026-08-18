@@ -13,6 +13,7 @@ import (
 func TestDefineEndpointBuildsEndpointFromSpec(t *testing.T) {
 	resolver := func(*Req) (string, *e.ErrInvalidParam) { return "orders:new", nil }
 	authKeys := map[string]bool{"secret": true}
+	controls := []EndpointControlSpec{{Kind: " gate ", Key: " merx_private_beta "}}
 
 	endpoint := DefineEndpoint(EndpointSpec{
 		Method:  " post ",
@@ -44,10 +45,12 @@ func TestDefineEndpointBuildsEndpointFromSpec(t *testing.T) {
 		Limits: EndpointLimitsSpec{
 			MaxRequestBytes: 1024,
 		},
+		Controls: controls,
 		AuthKeys: authKeys,
 	})
 	authKeys["secret"] = false
 	authKeys["new"] = true
+	controls[0].Key = "mutated"
 
 	if endpoint.Method() != POST {
 		t.Fatalf("method = %q, want %q", endpoint.Method(), POST)
@@ -102,6 +105,21 @@ func TestDefineEndpointBuildsEndpointFromSpec(t *testing.T) {
 	}
 	if endpoint.LimitsSpec().MaxRequestBytes != 1024 {
 		t.Fatalf("max request bytes = %d, want 1024", endpoint.LimitsSpec().MaxRequestBytes)
+	}
+	gotControls := endpoint.Controls()
+	if len(gotControls) != 1 {
+		t.Fatalf("controls = %d, want 1", len(gotControls))
+	}
+	if gotControls[0].Kind != EndpointControlKindGate ||
+		gotControls[0].Key != "merx_private_beta" {
+		t.Fatalf("controls = %#v, want merx private beta gate", gotControls)
+	}
+	gotControls[0].Key = "mutated"
+	if gotControls := endpoint.Controls(); gotControls[0].Key != "merx_private_beta" {
+		t.Fatalf("controls accessor exposed mutable state: %#v", gotControls)
+	}
+	if !endpoint.RequiresControls() {
+		t.Fatal("endpoint should require controls")
 	}
 	if keys := endpoint.AuthKeys(); !keys["secret"] || keys["new"] {
 		t.Fatalf("auth keys were not cloned: %#v", keys)

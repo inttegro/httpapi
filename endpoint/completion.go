@@ -119,6 +119,7 @@ type CompletionEndpoint struct {
 	Operation            OperationSpec
 	Route                RouteSpec
 	Priority             EndpointPriority
+	Controls             []EndpointControlSpec
 	AuthKeys             map[string]bool
 }
 
@@ -239,6 +240,7 @@ func (endpoint Endpoint) completionEndpoint() CompletionEndpoint {
 		Operation:            endpoint.Operation(),
 		Route:                endpoint.RouteSpec(),
 		Priority:             endpoint.Priority(),
+		Controls:             endpoint.Controls(),
 		AuthKeys:             endpoint.AuthKeys(),
 	}
 }

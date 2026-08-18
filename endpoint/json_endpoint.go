@@ -76,6 +76,10 @@ type JSONEndpointSpec[T any] struct {
 	// and body.
 	Limits EndpointLimitsSpec
 
+	// Controls declares app/organization control policy required before the
+	// endpoint handler can run.
+	Controls []EndpointControlSpec
+
 	// Responses describes the response payloads emitted by the endpoint.
 	Responses []ResponseContract
 
@@ -155,6 +159,7 @@ func DefineJSONEndpoint[T any](spec JSONEndpointSpec[T]) Endpoint {
 		Priority:       spec.Priority,
 		Timeout:        spec.Timeout,
 		Limits:         spec.Limits,
+		Controls:       spec.Controls,
 		Request:        RequestBody(spec.Request),
 		Responses:      spec.Responses,
 		TimeoutHandler: spec.TimeoutHandler,

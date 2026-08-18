@@ -68,6 +68,10 @@ type EndpointSpec struct {
 	// and body.
 	Limits EndpointLimitsSpec
 
+	// Controls declares app/organization control policy required before the
+	// endpoint handler can run.
+	Controls []EndpointControlSpec
+
 	// Request describes the request payload accepted by the endpoint.
 	Request RequestContract
 
@@ -152,6 +156,9 @@ func endpointFromSpec(spec EndpointSpec) Endpoint {
 		},
 		limits: endpointLimitsPolicy{
 			limits: normalizeEndpointLimitsSpec(spec.Limits),
+		},
+		controls: endpointControlPolicy{
+			controls: normalizeEndpointControlSpecs(spec.Controls),
 		},
 		requestContract:   normalizeRequestContract(spec.Request),
 		responseContracts: normalizeResponseContracts(spec.Responses),
