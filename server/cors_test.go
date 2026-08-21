@@ -3,6 +3,7 @@ package server
 import (
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"testing"
 	"time"
 )
@@ -270,10 +271,8 @@ func assertHeader(t *testing.T, header http.Header, name, want string) {
 
 func assertHeaderContains(t *testing.T, header http.Header, name, want string) {
 	t.Helper()
-	for _, value := range header.Values(name) {
-		if value == want {
-			return
-		}
+	if slices.Contains(header.Values(name), want) {
+		return
 	}
 	t.Fatalf("%s values = %#v, want %q", name, header.Values(name), want)
 }

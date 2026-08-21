@@ -2,6 +2,7 @@ package param
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 )
 
@@ -88,10 +89,5 @@ func normalizeEnumValues(values []string) []string {
 }
 
 func stringIn(value string, values []string) bool {
-	for _, candidate := range values {
-		if value == candidate {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(values, value)
 }

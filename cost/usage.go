@@ -2,6 +2,7 @@ package cost
 
 import (
 	"fmt"
+	"maps"
 	"strings"
 	"time"
 )
@@ -66,7 +67,7 @@ type UsageUnit struct {
 
 	// ObservedAt is when the usage was observed. Recorder.Record fills this
 	// value when callers leave it empty.
-	ObservedAt time.Time `json:"observed_at,omitempty"`
+	ObservedAt time.Time `json:"observed_at"`
 }
 
 // NewUsageUnit returns a UsageUnit with the required identity and quantity
@@ -165,9 +166,7 @@ func cloneLabels(labels map[string]string) map[string]string {
 		return nil
 	}
 	out := make(map[string]string, len(labels))
-	for key, value := range labels {
-		out[key] = value
-	}
+	maps.Copy(out, labels)
 	return out
 }
 

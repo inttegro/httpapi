@@ -272,7 +272,7 @@ func (attribute *EnvelopeAttribute[T]) projectEnvelopeAttribute(
 }
 
 func envelopeTypeOf[T any]() reflect.Type {
-	return reflect.TypeOf((*T)(nil)).Elem()
+	return reflect.TypeFor[T]()
 }
 
 func envelopeValueNil(value any) bool {

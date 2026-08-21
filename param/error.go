@@ -107,8 +107,7 @@ func Invalid(param string, message string) *Error {
 }
 
 func paramError(param string, code ErrorCode, message string, cause error) *Error {
-	var existing *Error
-	if errors.As(cause, &existing) {
+	if existing, ok := errors.AsType[*Error](cause); ok {
 		return existing
 	}
 	return &Error{

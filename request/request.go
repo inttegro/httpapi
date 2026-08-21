@@ -110,7 +110,7 @@ type Req struct {
 
 	// Caller is the application-defined request source attached by trusted
 	// middleware or tests.
-	Caller Caller `json:"caller,omitempty"`
+	Caller Caller `json:"caller"`
 
 	// AuthFailure records credential parsing or authentication failure details
 	// for audit output.
@@ -166,7 +166,7 @@ func (r Req) MarshalJSON() ([]byte, error) {
 		Err                  *e.Error       `json:"error,omitempty"`
 		Dur                  time.Duration  `json:"duration"`
 		ID                   string         `json:"id"`
-		Caller               Caller         `json:"caller,omitempty"`
+		Caller               Caller         `json:"caller"`
 		Auth                 AuthAudit      `json:"auth"`
 		AuthFailure          *AuthFailure   `json:"auth_failure,omitempty"`
 		AuthorizationFailure *AuthFailure   `json:"authorization_failure,omitempty"`
@@ -785,7 +785,7 @@ func NewReqWithError(req *http.Request) (*Req, error) {
 	}
 
 	auth := r.Authorization()
-	authScheme := strings.SplitN(auth, " ", 2)[0]
+	authScheme, _, _ := strings.Cut(auth, " ")
 	schemes := currentAuthorizationSchemes()
 	switch strings.ToLower(authScheme) {
 	case strings.ToLower(schemes.Bearer):

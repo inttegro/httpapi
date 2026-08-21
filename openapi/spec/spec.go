@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"strings"
 )
 
@@ -487,9 +488,7 @@ func (operation Operation) object() (map[string]any, error) {
 	if err != nil {
 		return nil, err
 	}
-	for name, value := range extensions {
-		object[name] = value
-	}
+	maps.Copy(object, extensions)
 
 	return object, nil
 }

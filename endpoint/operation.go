@@ -16,7 +16,7 @@ type OperationSpec struct {
 	Summary string `json:"summary,omitempty" yaml:"summary,omitempty"`
 
 	// Accounting carries provider-neutral accounting metadata for this operation.
-	Accounting AccountingSpec `json:"accounting,omitempty" yaml:"accounting,omitempty"`
+	Accounting AccountingSpec `json:"accounting" yaml:"accounting,omitempty"`
 }
 
 type endpointOperationPolicy struct {

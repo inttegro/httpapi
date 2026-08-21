@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"slices"
 	"strings"
 	"time"
 
@@ -211,8 +212,8 @@ func Handler(config Config) http.Handler {
 		handler = config.Mux
 	}
 
-	for i := len(config.Middleware) - 1; i >= 0; i-- {
-		if middleware := config.Middleware[i]; middleware != nil {
+	for _, middleware := range slices.Backward(config.Middleware) {
+		if middleware != nil {
 			handler = middleware(handler)
 		}
 	}

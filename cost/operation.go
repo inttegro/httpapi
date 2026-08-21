@@ -44,10 +44,10 @@ type Operation struct {
 	Kind string `json:"kind,omitempty"`
 
 	// StartedAt is when the operation started.
-	StartedAt time.Time `json:"started_at,omitempty"`
+	StartedAt time.Time `json:"started_at"`
 
 	// CompletedAt is when the operation completed.
-	CompletedAt time.Time `json:"completed_at,omitempty"`
+	CompletedAt time.Time `json:"completed_at"`
 }
 
 // NewOperationID returns a new provider-neutral operation identifier.

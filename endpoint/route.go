@@ -45,8 +45,8 @@ func (spec RouteSpec) WithDefaults(defaults RouteSpec) RouteSpec {
 	defaults = NormalizeRouteSpec(defaults)
 	spec = NormalizeRouteSpec(spec)
 
-	merged := RouteSpec{}
-	merged.Backend = spec.Backend.WithDefaults(defaults.Backend)
+	merged := RouteSpec{
+		Backend: spec.Backend.WithDefaults(defaults.Backend)}
 
 	return NormalizeRouteSpec(merged)
 }

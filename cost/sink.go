@@ -114,10 +114,10 @@ type EstimateEvent struct {
 	Currency string `json:"currency,omitempty"`
 
 	// Amount is the exact decimal estimate in Currency.
-	Amount Quantity `json:"amount,omitempty"`
+	Amount Quantity `json:"amount"`
 
 	// EstimatedAt is when the estimate was produced.
-	EstimatedAt time.Time `json:"estimated_at,omitempty"`
+	EstimatedAt time.Time `json:"estimated_at"`
 
 	// Labels carries optional low-cardinality service-owned estimate metadata.
 	Labels map[string]string `json:"labels,omitempty"`

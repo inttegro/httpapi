@@ -1,6 +1,8 @@
 package schema
 
 import (
+	"slices"
+
 	"github.com/zebodotdev/httpapi/openapi/spec"
 	parampkg "github.com/zebodotdev/httpapi/param"
 	responsepkg "github.com/zebodotdev/httpapi/response"
@@ -398,10 +400,8 @@ func cloneStringSlice(values []string) []string {
 }
 
 func appendUniqueString(values []string, value string) []string {
-	for _, existing := range values {
-		if existing == value {
-			return values
-		}
+	if slices.Contains(values, value) {
+		return values
 	}
 	return append(values, value)
 }

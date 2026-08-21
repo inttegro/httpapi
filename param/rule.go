@@ -39,10 +39,7 @@ func (rule presenceRule) apply(values Values) *Error {
 		return nil
 	}
 
-	minPresent := rule.minPresent
-	if minPresent > len(visible) {
-		minPresent = len(visible)
-	}
+	minPresent := min(rule.minPresent, len(visible))
 
 	present := make([]string, 0, len(visible))
 	for _, name := range visible {

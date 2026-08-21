@@ -338,7 +338,7 @@ func addVary(header http.Header, values ...string) {
 
 	seen := map[string]bool{}
 	for _, existing := range header.Values(varyHeader) {
-		for _, part := range strings.Split(existing, ",") {
+		for part := range strings.SplitSeq(existing, ",") {
 			seen[strings.ToLower(strings.TrimSpace(part))] = true
 		}
 	}

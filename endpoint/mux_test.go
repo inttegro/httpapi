@@ -164,8 +164,7 @@ func TestMuxMountRejectsDuplicateWithinBatchWithoutRegistering(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected duplicate mount error")
 	}
-	var duplicate ErrDuplicateMuxRoute
-	if !errors.As(err, &duplicate) {
+	if _, ok := errors.AsType[ErrDuplicateMuxRoute](err); !ok {
 		t.Fatalf("error = %T %v, want ErrDuplicateMuxRoute", err, err)
 	}
 	if len(mux.MountedEndpoints()) != 0 {

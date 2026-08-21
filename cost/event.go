@@ -31,10 +31,10 @@ type RequestMetadata struct {
 	Path string `json:"path,omitempty"`
 
 	// ReceivedAt is when httpapi began handling the request.
-	ReceivedAt time.Time `json:"received_at,omitempty"`
+	ReceivedAt time.Time `json:"received_at"`
 
 	// CompletedAt is when endpoint handling completed.
-	CompletedAt time.Time `json:"completed_at,omitempty"`
+	CompletedAt time.Time `json:"completed_at"`
 
 	// Duration is the elapsed endpoint runtime duration.
 	Duration time.Duration `json:"duration,omitempty"`
@@ -96,7 +96,7 @@ type OperationEvent struct {
 	Usage []UsageUnit `json:"usage,omitempty"`
 
 	// RecordedAt is when this event snapshot was produced.
-	RecordedAt time.Time `json:"recorded_at,omitempty"`
+	RecordedAt time.Time `json:"recorded_at"`
 }
 
 // Empty reports whether event contains no usage units.
