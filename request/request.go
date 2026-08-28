@@ -54,6 +54,9 @@ const (
 
 	// IdType is the request ID prefix used by NewID.
 	IdType = "req"
+
+	// RequestRetention is how long request audit records remain valid.
+	RequestRetention = 30 * 24 * time.Hour
 )
 
 // UnauthorizedAppID is the placeholder application id assigned before request
@@ -84,6 +87,12 @@ type Req struct {
 
 	// RecdAt is when httpapi received and began parsing the request.
 	RecdAt time.Time `json:"received_at"`
+
+	// ExpiresAt is when the persisted request audit record should expire.
+	ExpiresAt time.Time `json:"expires_at"`
+
+	// ExpiresAtUnix is the DynamoDB TTL attribute in epoch seconds.
+	ExpiresAtUnix int64 `json:"expires_at_unix"`
 
 	// Req is the original Go HTTP request with its body restored for downstream
 	// consumers after httpapi has buffered it.
@@ -149,6 +158,7 @@ func (r *Req) Response() *response.Res {
 // Sensitive headers, request bodies, response bodies, authorization material,
 // and idempotency keys are redacted or summarized before serialization.
 func (r Req) MarshalJSON() ([]byte, error) {
+	r.ensureRequestExpiration()
 	safeReq, safeh, reqURL := r.auditRequest()
 	bdy := auditBody(r.Body)
 	res := r.auditResponse()
@@ -159,6 +169,8 @@ func (r Req) MarshalJSON() ([]byte, error) {
 		SessID               string         `json:"session_id,omitempty"`
 		IdemKey              string         `json:"idempotency_key,omitzero"`
 		RecdAt               time.Time      `json:"received_at"`
+		ExpiresAt            time.Time      `json:"expires_at"`
+		ExpiresAtUnix        int64          `json:"expires_at_unix"`
 		Header               http.Header    `json:"header,omitempty"`
 		Req                  *RequestAudit  `json:"request,omitempty"`
 		Body                 any            `json:"body,omitempty"`
@@ -177,6 +189,8 @@ func (r Req) MarshalJSON() ([]byte, error) {
 		SessID:               r.SessID,
 		IdemKey:              auditSecret(r.IdemKey),
 		RecdAt:               r.RecdAt,
+		ExpiresAt:            r.ExpiresAt,
+		ExpiresAtUnix:        r.ExpiresAtUnix,
 		Body:                 bdy,
 		Header:               safeh,
 		Req:                  safeReq,
@@ -190,6 +204,28 @@ func (r Req) MarshalJSON() ([]byte, error) {
 		AuthorizationFailure: r.AuthorizationFailure,
 		Session:              sessionAudit(r.Sess),
 	})
+}
+
+func (r *Req) ensureRequestExpiration() {
+	if r == nil {
+		return
+	}
+
+	expiresAt := r.ExpiresAt
+	if expiresAt.IsZero() {
+		expiresAt = requestExpiration(r.RecdAt)
+	}
+	r.ExpiresAt = expiresAt.UTC()
+	if r.ExpiresAtUnix <= 0 {
+		r.ExpiresAtUnix = r.ExpiresAt.Unix()
+	}
+}
+
+func requestExpiration(receivedAt time.Time) time.Time {
+	if receivedAt.IsZero() {
+		receivedAt = time.Now().UTC()
+	}
+	return receivedAt.UTC().Add(RequestRetention)
 }
 
 // Context returns the underlying request context or context.Background when the
@@ -764,12 +800,16 @@ func NewReqWithError(req *http.Request) (*Req, error) {
 	}
 	req.Body = io.NopCloser(bytes.NewReader(body))
 
+	receivedAt := time.Now().UTC()
+	expiresAt := requestExpiration(receivedAt)
 	r := Req{
-		AppID:  unAuthzReqAppID,
-		RecdAt: time.Now(),
-		Req:    req,
-		Body:   body,
-		ID:     genReqID(),
+		AppID:         unAuthzReqAppID,
+		RecdAt:        receivedAt,
+		ExpiresAt:     expiresAt,
+		ExpiresAtUnix: expiresAt.Unix(),
+		Req:           req,
+		Body:          body,
+		ID:            genReqID(),
 	}
 	r.ensureCostRecorder()
 	if session := SessionFromContext(req.Context()); session != nil {

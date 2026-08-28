@@ -1,12 +1,14 @@
 package request
 
 import (
+	"encoding/json"
 	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/zebodotdev/httpapi/cost"
 	"github.com/zebodotdev/httpapi/response"
@@ -31,6 +33,37 @@ func TestNewReqParsesBodyAndResetsReader(t *testing.T) {
 	}
 	if string(replay) != string(req.Body) {
 		t.Fatalf("reset body = %q, want %q", replay, req.Body)
+	}
+}
+
+func TestNewReqSetsRequestAuditExpiration(t *testing.T) {
+	httpReq := httptest.NewRequest(http.MethodPost, "/tasks", strings.NewReader(`{}`))
+	startedAt := time.Now().UTC()
+
+	req := NewReq(httpReq)
+
+	if req == nil {
+		t.Fatal("NewReq returned nil")
+	}
+	if req.ExpiresAt.IsZero() {
+		t.Fatal("expires_at was not set")
+	}
+	if req.ExpiresAtUnix != req.ExpiresAt.Unix() {
+		t.Fatalf("expires_at_unix = %d, want %d", req.ExpiresAtUnix, req.ExpiresAt.Unix())
+	}
+	if req.ExpiresAt.Sub(req.RecdAt) != RequestRetention {
+		t.Fatalf("expiration window = %v, want %v", req.ExpiresAt.Sub(req.RecdAt), RequestRetention)
+	}
+	if req.ExpiresAt.Before(startedAt.Add(RequestRetention)) {
+		t.Fatalf("expires_at = %v, want at least %v", req.ExpiresAt, startedAt.Add(RequestRetention))
+	}
+
+	var audit map[string]any
+	if err := json.Unmarshal(mustMarshalReq(t, req), &audit); err != nil {
+		t.Fatalf("unmarshal request audit: %v", err)
+	}
+	if audit["expires_at_unix"] == nil {
+		t.Fatalf("request audit omitted expires_at_unix: %#v", audit)
 	}
 }
 
@@ -146,3 +179,12 @@ func (r errReadCloser) Close() error {
 }
 
 var _ io.ReadCloser = errReadCloser{}
+
+func mustMarshalReq(t *testing.T, req *Req) []byte {
+	t.Helper()
+	raw, err := json.Marshal(req)
+	if err != nil {
+		t.Fatalf("marshal request: %v", err)
+	}
+	return raw
+}
