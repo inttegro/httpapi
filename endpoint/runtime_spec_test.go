@@ -341,7 +341,10 @@ func TestDefineEndpointContractAccessorsDoNotLeakMutableState(t *testing.T) {
 					{
 						Name:     "id",
 						Required: true,
-						Shape:    response.ShapeSpec{Type: response.TypeString},
+						Shape: response.ShapeSpec{
+							Type: response.TypeString,
+							Enum: []string{"refund"},
+						},
 					},
 				},
 			},
@@ -362,6 +365,7 @@ func TestDefineEndpointContractAccessorsDoNotLeakMutableState(t *testing.T) {
 	request.Body.Parameters[0].Shape.Enum[0] = "mutated"
 	*request.Body.Parameters[0].MinSize = 99
 	responses[0].Description = "mutated"
+	responses[0].Body.Attributes[0].Shape.Enum[0] = "mutated"
 	responses[0].Body.Attributes[0].Name = "mutated"
 
 	gotRequest := endpoint.RequestContract()
@@ -373,6 +377,7 @@ func TestDefineEndpointContractAccessorsDoNotLeakMutableState(t *testing.T) {
 	gotRequest.Body.Parameters[0].Shape.Enum[0] = "mutated"
 	*gotRequest.Body.Parameters[0].MinSize = 77
 	gotResponses[0].Description = "mutated"
+	gotResponses[0].Body.Attributes[0].Shape.Enum[0] = "mutated"
 	gotResponses[0].Body.Attributes[0].Name = "mutated"
 
 	gotRequest = endpoint.RequestContract()
@@ -397,6 +402,9 @@ func TestDefineEndpointContractAccessorsDoNotLeakMutableState(t *testing.T) {
 	gotResponses = endpoint.ResponseContracts()
 	if gotResponses[0].Description != "Order." {
 		t.Fatalf("response description leaked mutation: %#v", gotResponses[0])
+	}
+	if gotResponses[0].Body.Attributes[0].Shape.Enum[0] != "refund" {
+		t.Fatalf("response enum leaked mutation: %#v", gotResponses[0].Body.Attributes[0].Shape.Enum)
 	}
 	if gotResponses[0].Body.Attributes[0].Name != "id" {
 		t.Fatalf("response attribute leaked mutation: %#v", gotResponses[0].Body.Attributes[0])

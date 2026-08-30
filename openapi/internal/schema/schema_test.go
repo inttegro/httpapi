@@ -315,3 +315,19 @@ func TestFromResponseShapeIncludesMapAdditionalProperties(t *testing.T) {
 		t.Fatalf("required = %#v, want status", value.Required)
 	}
 }
+
+func TestFromResponseShapeIncludesStringEnum(t *testing.T) {
+	shape := response.ShapeSpec{
+		Type: response.TypeString,
+		Enum: []string{"pending", "succeeded"},
+	}
+	got := FromResponseShape(shape)
+	if !reflect.DeepEqual(got.Enum, shape.Enum) {
+		t.Fatalf("enum = %#v, want %#v", got.Enum, shape.Enum)
+	}
+
+	shape.Enum[0] = "mutated"
+	if got.Enum[0] != "pending" {
+		t.Fatalf("response enum leaked input mutation: %#v", got.Enum)
+	}
+}

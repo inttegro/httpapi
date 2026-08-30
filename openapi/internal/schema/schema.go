@@ -64,6 +64,9 @@ func FromParamShapeSwagger2(shape parampkg.ShapeSpec) spec.Schema {
 // OpenAPI schema.
 func FromResponseShape(shape responsepkg.ShapeSpec) spec.Schema {
 	schema := responseTypeSchema(shape.Type)
+	if len(shape.Enum) > 0 {
+		schema.Enum = cloneStringSlice(shape.Enum)
+	}
 	if shape.Format != "" {
 		schema.Format = shape.Format
 	}

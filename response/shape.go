@@ -1,6 +1,9 @@
 package response
 
 import (
+	"fmt"
+	"slices"
+	"strings"
 	"time"
 
 	callerpkg "github.com/zebodotdev/httpapi/caller"
@@ -50,6 +53,9 @@ type ShapeSpec struct {
 	// Format is the optional OpenAPI-compatible format emitted by the shape.
 	Format string
 
+	// Enum is the closed set of string values emitted by the shape.
+	Enum []string
+
 	// Attributes describes object attributes when Type is TypeObject.
 	Attributes []AttributeSpec
 
@@ -85,6 +91,44 @@ func (shape scalarShape[T]) projectShape(_ callerpkg.Caller, value T) any {
 
 // String emits a JSON string attribute.
 func String() Shape[string] { return scalarShape[string]{typ: TypeString} }
+
+// Enum emits a JSON string attribute from a closed set of values and exposes
+// that set to response contract transcribers.
+func Enum(values ...string) Shape[string] {
+	return enumShape{values: normalizeEnumValues(values)}
+}
+
+type enumShape struct {
+	values []string
+}
+
+func (shape enumShape) describeShape() ShapeSpec {
+	return ShapeSpec{Type: TypeString, Enum: slices.Clone(shape.values)}
+}
+
+func (shape enumShape) projectShape(_ callerpkg.Caller, value string) any {
+	return value
+}
+
+func normalizeEnumValues(values []string) []string {
+	normalized := make([]string, 0, len(values))
+	seen := map[string]bool{}
+	for _, value := range values {
+		value = strings.TrimSpace(value)
+		if value == "" {
+			panic("httpapi/response: enum value cannot be empty")
+		}
+		if seen[value] {
+			panic(fmt.Sprintf("httpapi/response: duplicate enum value %q", value))
+		}
+		seen[value] = true
+		normalized = append(normalized, value)
+	}
+	if len(normalized) == 0 {
+		panic("httpapi/response: at least one enum value is required")
+	}
+	return normalized
+}
 
 // Int emits a JSON integer attribute.
 func Int() Shape[int] { return scalarShape[int]{typ: TypeInt, format: "int32"} }

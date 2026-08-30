@@ -195,6 +195,7 @@ func cloneResponseShapeSpec(spec responsepkg.ShapeSpec) responsepkg.ShapeSpec {
 	cloned := responsepkg.ShapeSpec{
 		Type:   spec.Type,
 		Format: spec.Format,
+		Enum:   cloneStringSlice(spec.Enum),
 		Item:   cloneResponseShapeSpecPointer(spec.Item),
 	}
 	if len(spec.Attributes) > 0 {
