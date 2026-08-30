@@ -30,6 +30,7 @@ func TestDefineEndpointBuildsEndpointFromSpec(t *testing.T) {
 		Operation: OperationSpec{
 			ID:      " create_order ",
 			Summary: " Create order ",
+			Kind:    " WRITE ",
 			Accounting: AccountingSpec{
 				Cost: " enabled ",
 			},
@@ -83,6 +84,9 @@ func TestDefineEndpointBuildsEndpointFromSpec(t *testing.T) {
 	}
 	if operation.Summary != "Create order" {
 		t.Fatalf("summary = %q", operation.Summary)
+	}
+	if operation.Kind != OperationKindWrite {
+		t.Fatalf("operation kind = %q, want %q", operation.Kind, OperationKindWrite)
 	}
 	if operation.Accounting.Cost != CostAccountingEnabled {
 		t.Fatalf("operation accounting = %#v, want cost enabled", operation.Accounting)

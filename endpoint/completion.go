@@ -129,6 +129,11 @@ func (endpoint CompletionEndpoint) CostAccountingEnabled() bool {
 	return endpoint.Operation.Accounting.CostAccountingEnabled()
 }
 
+// OperationKind returns the endpoint's explicit read/write classification.
+func (endpoint CompletionEndpoint) OperationKind() OperationKind {
+	return NormalizeOperationKind(endpoint.Operation.Kind)
+}
+
 // CompletionPanic contains audit-safe panic metadata. Value is the recovered
 // panic value for in-process observers; Type is suitable for logs and durable
 // records.
@@ -333,13 +338,14 @@ func completionCostEvent(completion Completion) cost.OperationEvent {
 		ResponseSizeBytes: completion.ResponseSizeBytes,
 	}
 	endpointMetadata := cost.EndpointMetadata{
-		Method:      string(completion.Endpoint.Method),
-		Pattern:     completion.Endpoint.Pattern,
-		OperationID: completion.Endpoint.Operation.ID,
-		Summary:     completion.Endpoint.Operation.Summary,
-		Internal:    completion.Endpoint.Internal,
-		Priority:    string(completion.Endpoint.Priority),
-		Idempotent:  completion.Endpoint.Idempotent,
+		Method:        string(completion.Endpoint.Method),
+		Pattern:       completion.Endpoint.Pattern,
+		OperationID:   completion.Endpoint.Operation.ID,
+		OperationKind: string(completion.Endpoint.Operation.Kind),
+		Summary:       completion.Endpoint.Operation.Summary,
+		Internal:      completion.Endpoint.Internal,
+		Priority:      string(completion.Endpoint.Priority),
+		Idempotent:    completion.Endpoint.Idempotent,
 	}
 
 	event := cost.OperationEvent{

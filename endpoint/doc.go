@@ -59,8 +59,10 @@
 // # Route Metadata and Transcription
 //
 // Endpoint metadata is provider-neutral. OperationSpec describes operation ID,
-// summary, and accounting metadata. Operation.ID is the shared identity used by
-// OpenAPI, generated docs, completion events, and cost accounting. RouteSpec is
+// summary, explicit read/write kind, and accounting metadata. Operation.Kind is
+// never inferred from the HTTP method or route and is never inherited from an
+// endpoint group. Operation.ID is the shared identity used by OpenAPI,
+// generated docs, completion events, and cost accounting. RouteSpec is
 // routing/backend metadata only: backend addresses, path forwarding behavior,
 // and backend timeout intent without embedding a cloud provider's document
 // format. RequestContract and ResponseContract describe payloads by reusing

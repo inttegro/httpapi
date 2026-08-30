@@ -62,6 +62,9 @@ type EndpointMetadata struct {
 	// metadata.
 	OperationID string `json:"operation_id,omitempty"`
 
+	// OperationKind is the endpoint's explicit read/write classification.
+	OperationKind string `json:"operation_kind,omitempty"`
+
 	// Summary is the human-readable operation summary from endpoint metadata.
 	Summary string `json:"summary,omitempty"`
 

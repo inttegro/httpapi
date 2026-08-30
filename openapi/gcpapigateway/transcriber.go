@@ -40,6 +40,10 @@ const (
 	// generated gateway operations.
 	HTTPAPIPriorityExtensionName = "x-httpapi-priority"
 
+	// HTTPAPIOperationKindExtensionName records explicit read/write semantics on
+	// generated gateway operations.
+	HTTPAPIOperationKindExtensionName = "x-httpapi-operation-kind"
+
 	// PathTranslationAppend is the GCP backend mode for appending the matched
 	// request path to the backend address.
 	PathTranslationAppend = "APPEND_PATH_TO_ADDRESS"
@@ -274,6 +278,11 @@ func (t Transcriber) operationForRoute(route internalroute.Route) (spec.Operatio
 	}
 	if priority := route.Endpoint.Priority(); priority != "" {
 		if err := operation.SetExtension(HTTPAPIPriorityExtensionName, priority); err != nil {
+			return spec.Operation{}, err
+		}
+	}
+	if kind := route.Endpoint.OperationKind(); kind != endpointpkg.OperationKindUnspecified {
+		if err := operation.SetExtension(HTTPAPIOperationKindExtensionName, kind); err != nil {
 			return spec.Operation{}, err
 		}
 	}

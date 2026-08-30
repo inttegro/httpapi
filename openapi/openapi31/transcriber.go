@@ -32,6 +32,10 @@ const (
 	// HTTPAPIPriorityExtensionName records endpoint priority metadata on
 	// generated public operations.
 	HTTPAPIPriorityExtensionName = "x-httpapi-priority"
+
+	// HTTPAPIOperationKindExtensionName records explicit read/write semantics on
+	// generated public operations.
+	HTTPAPIOperationKindExtensionName = "x-httpapi-operation-kind"
 )
 
 // ErrDocumentVersionRequired reports a document transcription request without a
@@ -213,6 +217,11 @@ func operationForRoute(route internalroute.Route) (spec.Operation, error) {
 	}
 	if priority := route.Endpoint.Priority(); priority != "" {
 		if err := operation.SetExtension(HTTPAPIPriorityExtensionName, priority); err != nil {
+			return spec.Operation{}, err
+		}
+	}
+	if kind := route.Endpoint.OperationKind(); kind != endpointpkg.OperationKindUnspecified {
+		if err := operation.SetExtension(HTTPAPIOperationKindExtensionName, kind); err != nil {
 			return spec.Operation{}, err
 		}
 	}

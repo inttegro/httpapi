@@ -508,6 +508,7 @@ var CreateTask = endpoint.DefineEndpoint(endpoint.EndpointSpec{
 	Operation: endpoint.OperationSpec{
 		ID:      "create_task",
 		Summary: "Create task",
+		Kind:    endpoint.OperationKindWrite,
 		Accounting: endpoint.AccountingSpec{
 			Cost: endpoint.CostAccountingEnabled,
 		},
@@ -526,9 +527,13 @@ Prefer endpoint-level `Timeout`, `Limits`, `Priority`, `Access`, `Operation`,
 and `Route` metadata over service-local side tables. `Operation.ID` is the
 shared operation identity for OpenAPI, generated docs, completion events, and
 cost accounting; when it is empty, completion cost events fall back to
-`METHOD pattern`. `Route` is routing/backend metadata only. Transcribers can
-only produce complete documents when the endpoint contract carries the relevant
-metadata.
+`METHOD pattern`. `Operation.Kind` explicitly classifies the endpoint as
+`OperationKindRead` or `OperationKindWrite`; it is not inferred from an HTTP
+method or route and does not inherit from a group. The zero value remains
+distinguishable as `OperationKindUnspecified` for staged migrations;
+`RequiredOperationKind` enforces classification where a consumer requires it.
+`Route` is routing/backend metadata only. Transcribers can only produce complete
+documents when the endpoint contract carries the relevant metadata.
 
 Use aliases when an existing endpoint needs an additional route while keeping
 one handler and one endpoint contract. The canonical route keeps
@@ -545,7 +550,8 @@ var CreateTask = endpoint.DefineEndpoint(endpoint.EndpointSpec{
 	},
 	Handler: createTask,
 	Operation: endpoint.OperationSpec{
-		ID: "createTask",
+		ID:   "createTask",
+		Kind: endpoint.OperationKindWrite,
 	},
 })
 ```

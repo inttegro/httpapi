@@ -23,6 +23,7 @@ func TestEndpointCompletionSinkReceivesSuccessfulRequest(t *testing.T) {
 		Operation: OperationSpec{
 			ID:      "createTask",
 			Summary: "Create task",
+			Kind:    OperationKindWrite,
 		},
 	})
 	req := httptest.NewRequest(POST, "/tasks/create", strings.NewReader(`{}`))
@@ -46,6 +47,9 @@ func TestEndpointCompletionSinkReceivesSuccessfulRequest(t *testing.T) {
 	}
 	if event.Endpoint.Operation.ID != "createTask" {
 		t.Fatalf("operation id = %q, want createTask", event.Endpoint.Operation.ID)
+	}
+	if event.Endpoint.OperationKind() != OperationKindWrite {
+		t.Fatalf("operation kind = %q, want %q", event.Endpoint.OperationKind(), OperationKindWrite)
 	}
 	if event.Request == nil || event.Request.ID == "" {
 		t.Fatalf("request = %#v, want request id", event.Request)
@@ -79,6 +83,7 @@ func TestEndpointCompletionSinkReceivesCostEvent(t *testing.T) {
 		Operation: OperationSpec{
 			ID:      "createOrder",
 			Summary: "Create order",
+			Kind:    OperationKindWrite,
 		},
 		Priority: PriorityHigh,
 	})
@@ -126,6 +131,7 @@ func TestEndpointCompletionSinkReceivesCostEvent(t *testing.T) {
 		t.Fatalf("cost outcome = %q, want handled", event.Cost.Request.Outcome)
 	}
 	if event.Cost.Endpoint.OperationID != "createOrder" ||
+		event.Cost.Endpoint.OperationKind != string(OperationKindWrite) ||
 		event.Cost.Endpoint.Priority != string(PriorityHigh) {
 		t.Fatalf("cost endpoint metadata = %#v", event.Cost.Endpoint)
 	}

@@ -25,6 +25,9 @@ func TestTranscribeEmitsBackendAndDefaultResponse(t *testing.T) {
 		noopGCPGatewayHandler,
 		endpointpkg.WithInternal(),
 		endpointpkg.WithRequiredAuthorization(endpointpkg.AuthorizationKindService),
+		endpointpkg.WithOperationSpec(endpointpkg.OperationSpec{
+			Kind: endpointpkg.OperationKindWrite,
+		}),
 	))
 	if err != nil {
 		t.Fatalf("TranscribeEndpoint() error = %v", err)
@@ -61,6 +64,10 @@ func TestTranscribeEmitsBackendAndDefaultResponse(t *testing.T) {
 	auth, ok := authValue.(endpointpkg.AuthorizationRequirement)
 	if !ok || auth.Kind != endpointpkg.AuthorizationKindService {
 		t.Fatalf("authorization metadata = %#v", authValue)
+	}
+	kind, ok := operation.Extension(HTTPAPIOperationKindExtensionName)
+	if !ok || kind != endpointpkg.OperationKindWrite {
+		t.Fatalf("operation kind = %#v", kind)
 	}
 
 	encoded, err := json.Marshal(paths)

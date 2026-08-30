@@ -24,6 +24,7 @@ func TestTranscribeSkipsInternalRoutesAndEmitsMetadata(t *testing.T) {
 		endpointpkg.WithOperationSpec(endpointpkg.OperationSpec{
 			ID:      "public_operation",
 			Summary: "Public operation",
+			Kind:    endpointpkg.OperationKindRead,
 		}),
 		endpointpkg.WithRouteSpec(endpointpkg.RouteSpec{
 			Backend: endpointpkg.RouteBackend{
@@ -67,6 +68,10 @@ func TestTranscribeSkipsInternalRoutesAndEmitsMetadata(t *testing.T) {
 	priority, ok := operation.Extension(HTTPAPIPriorityExtensionName)
 	if !ok || priority != endpointpkg.EndpointPriorityHigh {
 		t.Fatalf("priority = %#v", priority)
+	}
+	kind, ok := operation.Extension(HTTPAPIOperationKindExtensionName)
+	if !ok || kind != endpointpkg.OperationKindRead {
+		t.Fatalf("operation kind = %#v", kind)
 	}
 	encoded, err := json.Marshal(paths)
 	if err != nil {
