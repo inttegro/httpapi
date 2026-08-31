@@ -84,6 +84,12 @@ func TestEndpointControlAllowsAcceptedDecision(t *testing.T) {
 	}
 }
 
+func TestEndpointControlKindTimedGateConstant(t *testing.T) {
+	if EndpointControlKindTimedGate != "timed_gate" {
+		t.Fatalf("EndpointControlKindTimedGate = %q, want timed_gate", EndpointControlKindTimedGate)
+	}
+}
+
 func controlledTestEndpoint(called *bool) Endpoint {
 	return DefineEndpoint(EndpointSpec{
 		Method: POST,

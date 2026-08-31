@@ -13,6 +13,7 @@ import (
 const (
 	EndpointControlKindFeatureFlag    = "feature_flag"
 	EndpointControlKindGate           = "gate"
+	EndpointControlKindTimedGate      = "timed_gate"
 	EndpointControlKindCircuitBreaker = "circuit_breaker"
 
 	endpointControlAuthenticationRequiredCode = "endpoint_control_authentication_required"
