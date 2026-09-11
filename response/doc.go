@@ -91,4 +91,23 @@
 // defaults, redaction, or domain-to-response preparation. Envelope also
 // implements Shape, so it can describe nested object values that do not need
 // their own Go view struct.
+//
+// Use Meta in an envelope when the response can include the standard
+// response_meta object. Build values with the same compact style as headers:
+//
+//	var taskEnvelope = response.Envelope(
+//		response.OptionalField("task", taskResponse),
+//		response.Meta(),
+//	)
+//
+//	response.RenderJSON(r, http.StatusOK, taskEnvelope.Body(
+//		response.Field("task", task),
+//		response.WithMeta(response.Meta().
+//			Set("processing_ms", 84).
+//			Debug("provider_attempts", 1)),
+//	))
+//
+// response_meta is curated body metadata. HTTP status and headers remain native
+// HTTP response fields; do not place raw requests, authorization material,
+// idempotency keys, provider payloads, stack traces, or secrets in response_meta.
 package response

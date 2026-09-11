@@ -17,6 +17,20 @@ import (
 )
 
 const (
+	// HeaderContentType is the canonical Content-Type response header name.
+	HeaderContentType = "Content-Type"
+
+	// HeaderRequestID is the standard response header carrying the request id.
+	HeaderRequestID = "X-Request-Id"
+
+	// HeaderRequestTiming is the standard response header carrying endpoint
+	// write timing.
+	HeaderRequestTiming = "X-Request-Timing"
+
+	// HeaderRetryAfter is the standard response header for retry backoff
+	// guidance.
+	HeaderRetryAfter = "Retry-After"
+
 	contentTypeHeaderKey = "content-type"
 	xReqIDHeaderKey      = "x-request-id"
 	xReqTimingHeaderKey  = "x-request-timing"

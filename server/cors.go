@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"strings"
 	"time"
+
+	responsepkg "github.com/zebodotdev/httpapi/response"
 )
 
 const (
@@ -75,7 +77,11 @@ func PermissiveCORS() *CORSConfig {
 		AllowedOrigins: []string{wildcardHeaderValue},
 		AllowedMethods: []string{wildcardHeaderValue},
 		AllowedHeaders: []string{wildcardHeaderValue},
-		OptionsStatus:  http.StatusNoContent,
+		ExposeHeaders: []string{
+			responsepkg.HeaderRequestID,
+			responsepkg.HeaderRetryAfter,
+		},
+		OptionsStatus: http.StatusNoContent,
 	}
 	return &config
 }

@@ -4,6 +4,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/zebodotdev/httpapi/openapi/spec"
 	"github.com/zebodotdev/httpapi/param"
 	"github.com/zebodotdev/httpapi/response"
 )
@@ -313,6 +314,28 @@ func TestFromResponseShapeIncludesMapAdditionalProperties(t *testing.T) {
 	}
 	if !reflect.DeepEqual(value.Required, []string{"status"}) {
 		t.Fatalf("required = %#v, want status", value.Required)
+	}
+}
+
+func TestFromResponseShapeIncludesResponseMetaAdditionalProperties(t *testing.T) {
+	shape := response.Envelope(
+		response.RequiredField("status", response.String()),
+		response.Meta(),
+	)
+
+	got := FromResponseShape(response.Describe(shape))
+	meta := got.Properties[response.ResponseMetaName]
+	if meta.Type != "object" {
+		t.Fatalf("response_meta type = %q, want object", meta.Type)
+	}
+	if meta.AdditionalProperties == nil {
+		t.Fatal("response_meta additionalProperties is nil")
+	}
+	if !reflect.DeepEqual(*meta.AdditionalProperties, spec.Schema{}) {
+		t.Fatalf("response_meta additionalProperties = %#v, want any schema", meta.AdditionalProperties)
+	}
+	if !reflect.DeepEqual(got.Required, []string{"status"}) {
+		t.Fatalf("required = %#v, want status", got.Required)
 	}
 }
 

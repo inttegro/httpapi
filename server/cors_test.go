@@ -6,6 +6,8 @@ import (
 	"slices"
 	"testing"
 	"time"
+
+	responsepkg "github.com/zebodotdev/httpapi/response"
 )
 
 func TestConfigCORSHandlesPreflightBeforeMiddleware(t *testing.T) {
@@ -80,6 +82,12 @@ func TestCORSActualRequestEntersMiddlewareAndHandler(t *testing.T) {
 		t.Fatalf("events = %#v", events)
 	}
 	assertHeader(t, rec.Header(), accessControlAllowOriginHeader, wildcardHeaderValue)
+	assertHeader(
+		t,
+		rec.Header(),
+		accessControlExposeHeadersHeader,
+		responsepkg.HeaderRequestID+", "+responsepkg.HeaderRetryAfter,
+	)
 }
 
 func TestCORSPlainOptionsPassesThrough(t *testing.T) {

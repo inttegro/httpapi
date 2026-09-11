@@ -193,10 +193,11 @@ func cloneParamRuleSpec(spec parampkg.RuleSpec) parampkg.RuleSpec {
 
 func cloneResponseShapeSpec(spec responsepkg.ShapeSpec) responsepkg.ShapeSpec {
 	cloned := responsepkg.ShapeSpec{
-		Type:   spec.Type,
-		Format: spec.Format,
-		Enum:   cloneStringSlice(spec.Enum),
-		Item:   cloneResponseShapeSpecPointer(spec.Item),
+		Type:     spec.Type,
+		Format:   spec.Format,
+		Enum:     cloneStringSlice(spec.Enum),
+		Item:     cloneResponseShapeSpecPointer(spec.Item),
+		MapValue: cloneResponseShapeSpecPointer(spec.MapValue),
 	}
 	if len(spec.Attributes) > 0 {
 		cloned.Attributes = make([]responsepkg.AttributeSpec, 0, len(spec.Attributes))
