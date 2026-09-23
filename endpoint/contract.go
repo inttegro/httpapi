@@ -12,8 +12,9 @@ import (
 
 // RequestContract describes the request payload accepted by an endpoint.
 type RequestContract struct {
-	// Body is the provider-neutral JSON request body description derived from a
-	// param request parser.
+	// Body is the provider-neutral request payload description. JSON endpoints
+	// derive it from a param request parser; other content types may declare the
+	// accepted fields directly.
 	Body parampkg.ShapeSpec
 
 	// Required reports whether the endpoint requires a request body.
