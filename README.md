@@ -1,6 +1,6 @@
 # HTTP API
 
-`github.com/zebodotdev/httpapi` is a reusable HTTP contract layer for Go
+`github.com/inttegro/httpapi` is a reusable HTTP contract layer for Go
 services.
 
 It helps service teams define endpoint contracts, parse request bodies into
@@ -15,7 +15,7 @@ boundaries.
 ## Install
 
 ```sh
-go get github.com/zebodotdev/httpapi
+go get github.com/inttegro/httpapi
 ```
 
 ## Mental Model
@@ -59,7 +59,7 @@ Define callers once and reuse the values:
 ```go
 package tasksapi
 
-import "github.com/zebodotdev/httpapi/caller"
+import "github.com/inttegro/httpapi/caller"
 
 var (
 	PublicAPI = caller.Define("public-api")
@@ -817,14 +817,14 @@ response metadata rather than adding provider fields to endpoint structs.
 
 The root package is doc-only. Application code should import subpackages:
 
-- `github.com/zebodotdev/httpapi/auth`
-- `github.com/zebodotdev/httpapi/caller`
-- `github.com/zebodotdev/httpapi/endpoint`
-- `github.com/zebodotdev/httpapi/erreur`
-- `github.com/zebodotdev/httpapi/param`
-- `github.com/zebodotdev/httpapi/request`
-- `github.com/zebodotdev/httpapi/response`
-- `github.com/zebodotdev/httpapi/server`
-- `github.com/zebodotdev/httpapi/openapi/openapi31`
-- `github.com/zebodotdev/httpapi/openapi/gcpapigateway`
-- `github.com/zebodotdev/httpapi/openapi/spec`
+- `github.com/inttegro/httpapi/auth`
+- `github.com/inttegro/httpapi/caller`
+- `github.com/inttegro/httpapi/endpoint`
+- `github.com/inttegro/httpapi/erreur`
+- `github.com/inttegro/httpapi/param`
+- `github.com/inttegro/httpapi/request`
+- `github.com/inttegro/httpapi/response`
+- `github.com/inttegro/httpapi/server`
+- `github.com/inttegro/httpapi/openapi/openapi31`
+- `github.com/inttegro/httpapi/openapi/gcpapigateway`
+- `github.com/inttegro/httpapi/openapi/spec`
