@@ -50,9 +50,9 @@ endpoint will handle it.
 
 ## Callers
 
-A `caller.Caller` is an application-defined label for the trusted source of a
-request. It is not an auth scheme. The same caller values can restrict endpoint
-access, request parameters, and response attributes.
+A `caller.Caller` is an application-defined label for the trusted source or
+projection of a request. It is not an auth scheme. The same caller values can
+restrict endpoint access, request parameters, and response attributes.
 
 Define callers once and reuse the values:
 
@@ -70,6 +70,32 @@ var (
 
 Trusted middleware should attach the active caller with
 `request.ContextWithCaller` before the endpoint runtime builds `request.Req`.
+That caller remains the authority used for endpoint and parameter access.
+
+Response projection defaults to the request caller. When a trusted internal
+caller needs the exact public representation, define a directional projection
+policy and apply the requested projection through the request orchestrator:
+
+```go
+var APIProjectionPolicy = caller.DefineProjectionPolicy(
+	caller.Descends(Worker, PublicAPI),
+	caller.Descends(Dashboard, PublicAPI),
+)
+
+func withPublicProjection(ctx context.Context, granted caller.Caller) (context.Context, error) {
+	ctx = request.ContextWithCaller(ctx, granted)
+	return request.ContextWithResponseProjection(ctx, APIProjectionPolicy, PublicAPI)
+}
+```
+
+Projection rules form a graph, not a numeric privilege ladder. Identity and
+transitive descent are allowed; upward and lateral projections return
+`caller.ErrProjectionElevation`. Resolve any untrusted projection request
+through `request.ContextWithResponseProjection` or `Req.ProjectResponseAs`.
+Both entry points run the response-projection orchestrator: it loads the
+granted caller, resolves the requested projection, and only attaches the
+result after every preceding step succeeds. Application code should not
+resolve a caller and mutate request state as separate operations.
 
 When no caller restriction is configured, the object is available to every
 caller. This applies consistently to endpoint groups, endpoints, params, and
@@ -386,7 +412,9 @@ response.RenderJSON(r, http.StatusCreated, taskResponse.Body(task))
 ```
 
 When the target is `*request.Req` or `*endpoint.Req`, `response` derives the
-caller from `r.RequestCaller()`. Do not pass the caller manually from handlers.
+projection from `r.ResponseCaller()`. It defaults to `r.RequestCaller()`, so
+existing handlers do not need to change. Do not pass the caller manually from
+handlers.
 
 Use `response.Object[T]` directly when the handler already has a response view
 value. Use `response.Project(shape, prepare)` when the handler has a domain

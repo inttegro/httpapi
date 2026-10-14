@@ -2,15 +2,24 @@ package response
 
 import callerpkg "github.com/zebodotdev/httpapi/caller"
 
-// CallerTarget is a response target that can expose the caller attached to the
-// request being rendered.
+// ResponseCallerTarget is a response target that can expose the caller used to
+// project the response being rendered.
 //
 // request.Req satisfies this interface. Render uses it to project shaped bodies
 // without asking endpoint handlers to pass caller information manually.
+type ResponseCallerTarget interface {
+	Target
+
+	// ResponseCaller returns the application-defined response projection caller.
+	ResponseCaller() callerpkg.Caller
+}
+
+// CallerTarget is the legacy response target interface used before request
+// authority and response projection were separated. Custom targets that only
+// implement CallerTarget remain supported.
 type CallerTarget interface {
 	Target
 
-	// RequestCaller returns the application-defined request caller.
 	RequestCaller() callerpkg.Caller
 }
 
@@ -40,6 +49,10 @@ func responseForTarget(target Target, res *Res) *Res {
 }
 
 func callerFromTarget(target Target) callerpkg.Caller {
+	responseCallerTarget, ok := target.(ResponseCallerTarget)
+	if ok {
+		return responseCallerTarget.ResponseCaller()
+	}
 	callerTarget, ok := target.(CallerTarget)
 	if !ok {
 		return callerpkg.Caller{}

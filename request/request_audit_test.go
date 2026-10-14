@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	callerpkg "github.com/zebodotdev/httpapi/caller"
 	responsepkg "github.com/zebodotdev/httpapi/response"
 )
 
@@ -92,5 +93,31 @@ func TestReqMarshalJSONRedactsAuditSensitiveData(t *testing.T) {
 	}
 	if response["body_present"] != true {
 		t.Fatalf("response body presence missing: %s", data)
+	}
+}
+
+func TestReqMarshalJSONIncludesExplicitResponseCaller(t *testing.T) {
+	wrapped := NewReq(httptest.NewRequest(http.MethodGet, "/records", nil))
+	worker := callerpkg.Define("worker")
+	publicAPI := callerpkg.Define("public-api")
+	wrapped.AttachCaller(worker)
+	policy := callerpkg.DefineProjectionPolicy(callerpkg.Descends(worker, publicAPI))
+	if err := wrapped.ProjectResponseAs(policy, publicAPI); err != nil {
+		t.Fatalf("ProjectResponseAs error = %v", err)
+	}
+
+	data, err := json.Marshal(wrapped)
+	if err != nil {
+		t.Fatalf("marshal request audit: %v", err)
+	}
+	var raw map[string]any
+	if err := json.Unmarshal(data, &raw); err != nil {
+		t.Fatalf("decode request audit: %v", err)
+	}
+	if raw["caller"] != "worker" {
+		t.Fatalf("caller = %#v, want worker", raw["caller"])
+	}
+	if raw["response_caller"] != "public-api" {
+		t.Fatalf("response_caller = %#v, want public-api", raw["response_caller"])
 	}
 }

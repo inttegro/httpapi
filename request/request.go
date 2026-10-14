@@ -121,6 +121,10 @@ type Req struct {
 	// middleware or tests.
 	Caller Caller `json:"caller"`
 
+	// responseCaller is an optional, narrower caller used only for response
+	// projection. It is exposed in the redacted audit shape by MarshalJSON.
+	responseCaller Caller
+
 	// AuthFailure records credential parsing or authentication failure details
 	// for audit output.
 	AuthFailure *AuthFailure `json:"auth_failure,omitempty"`
@@ -179,6 +183,7 @@ func (r Req) MarshalJSON() ([]byte, error) {
 		Dur                  time.Duration  `json:"duration"`
 		ID                   string         `json:"id"`
 		Caller               Caller         `json:"caller"`
+		ResponseCaller       Caller         `json:"response_caller,omitzero"`
 		Auth                 AuthAudit      `json:"auth"`
 		AuthFailure          *AuthFailure   `json:"auth_failure,omitempty"`
 		AuthorizationFailure *AuthFailure   `json:"authorization_failure,omitempty"`
@@ -199,6 +204,7 @@ func (r Req) MarshalJSON() ([]byte, error) {
 		Dur:                  r.Dur,
 		ID:                   r.ID,
 		Caller:               r.Caller,
+		ResponseCaller:       r.responseCaller,
 		Auth:                 r.authAudit(),
 		AuthFailure:          r.AuthFailure,
 		AuthorizationFailure: r.AuthorizationFailure,
@@ -700,7 +706,7 @@ func (r *Req) ResponseBody() ([]byte, error) {
 	if r.Res.BodyReader != nil {
 		return nil, fmt.Errorf("httpapi: streamed response body cannot be buffered")
 	}
-	body, err := response.EncodeResponseBodyForCaller(r.Res, r.RequestCaller())
+	body, err := response.EncodeResponseBodyForCaller(r.Res, r.ResponseCaller())
 	if err != nil {
 		logr.Printf(
 			"failed to encode response as json:"+
@@ -817,6 +823,9 @@ func NewReqWithError(req *http.Request) (*Req, error) {
 	}
 	if caller := CallerFromContext(req.Context()); caller.Defined() {
 		r.AttachCaller(caller)
+	}
+	if caller := responseCallerFromContext(req.Context()); caller.Defined() {
+		r.responseCaller = caller
 	}
 
 	if r.Sess != nil {
