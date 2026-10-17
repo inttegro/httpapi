@@ -17,7 +17,14 @@ import (
 // better fit.
 type EnvelopeShape struct {
 	attributes []AcceptedEnvelopeAttribute
-	invariants []string
+	rules      []RuleSpec
+}
+
+type exactOneRule struct {
+	shape      *EnvelopeShape
+	names      []string
+	attributes map[string]struct{}
+	normalized []string
 }
 
 // Envelope starts a JSON envelope response shape definition.
@@ -57,17 +64,74 @@ func (shape *EnvelopeShape) Attribute(attribute AcceptedEnvelopeAttribute) *Enve
 		}
 	}
 	shape.attributes = append(shape.attributes, attribute)
-	if attribute.attributeInvariant() {
-		shape.invariants = append(shape.invariants, attribute.attributeName())
-	}
 	return shape
+}
+
+// ExactlyOneOf requires every projection to emit exactly one of the named
+// envelope attributes. Call ExactlyOneOf more than once to declare independent
+// alternative groups on the same envelope.
+func (shape *EnvelopeShape) ExactlyOneOf(names ...string) *EnvelopeShape {
+	rule := &exactOneRule{shape: shape, names: names}
+	rule.define()
+	return shape
+}
+
+func (rule *exactOneRule) define() {
+	rule.validateEnvelope()
+	rule.indexAttributes()
+	rule.normalizeNames()
+	rule.append()
+}
+
+func (rule *exactOneRule) validateEnvelope() {
+	if rule.shape == nil {
+		panic("httpapi/response: nil envelope shape")
+	}
+	rule.shape.validateAttributes()
+	if len(rule.names) < 2 {
+		panic("httpapi/response: exactly-one rule requires at least two envelope attributes")
+	}
+}
+
+func (rule *exactOneRule) indexAttributes() {
+	rule.attributes = make(map[string]struct{}, len(rule.shape.attributes))
+	for _, attribute := range rule.shape.attributes {
+		rule.attributes[attribute.attributeName()] = struct{}{}
+	}
+}
+
+func (rule *exactOneRule) normalizeNames() {
+	rule.normalized = make([]string, 0, len(rule.names))
+	seen := make(map[string]struct{}, len(rule.names))
+	for _, name := range rule.names {
+		name = strings.TrimSpace(name)
+		if name == "" {
+			panic("httpapi/response: exactly-one rule attribute name is required")
+		}
+		if _, ok := rule.attributes[name]; !ok {
+			panic(fmt.Sprintf("httpapi/response: exactly-one rule references unknown envelope attribute %q", name))
+		}
+		if _, ok := seen[name]; ok {
+			panic(fmt.Sprintf("httpapi/response: exactly-one rule repeats envelope attribute %q", name))
+		}
+		seen[name] = struct{}{}
+		rule.normalized = append(rule.normalized, name)
+	}
+}
+
+func (rule *exactOneRule) append() {
+	rule.shape.rules = append(rule.shape.rules, RuleSpec{
+		Names:      rule.normalized,
+		MinPresent: 1,
+		MaxPresent: 1,
+	})
 }
 
 // ProjectForCaller returns the JSON envelope visible to caller.
 //
 // An envelope response must emit at least one non-nil field for the active
-// caller. Optional nil fields are omitted; required nil fields panic. When the
-// shape declares invariant fields, exactly one invariant must be emitted.
+// caller. Optional nil fields are omitted; required nil fields panic. Every
+// exact-one rule is evaluated independently after caller-aware projection.
 func (shape *EnvelopeShape) ProjectForCaller(values EnvelopeValues, caller callerpkg.Caller) map[string]any {
 	if shape == nil {
 		panic("httpapi/response: nil envelope shape")
@@ -82,17 +146,17 @@ func (shape *EnvelopeShape) ProjectForCaller(values EnvelopeValues, caller calle
 			object[name] = projected
 		}
 	}
-	if len(shape.invariants) > 0 {
+	for _, rule := range shape.rules {
 		present := 0
-		for _, name := range shape.invariants {
+		for _, name := range rule.Names {
 			if _, ok := object[name]; ok {
 				present++
 			}
 		}
-		if present != 1 {
+		if present < rule.MinPresent || present > rule.MaxPresent {
 			panic(fmt.Sprintf(
-				"httpapi/response: envelope requires exactly one invariant field from %s; got %d",
-				strings.Join(shape.invariants, ", "),
+				"httpapi/response: envelope requires exactly one field from %s; got %d",
+				strings.Join(rule.Names, ", "),
 				present,
 			))
 		}
@@ -138,12 +202,15 @@ func (shape *EnvelopeShape) BodyValues(values EnvelopeValues) ShapedBody[Envelop
 
 func (shape *EnvelopeShape) describeShape() ShapeSpec {
 	spec := ShapeSpec{Type: TypeObject, Attributes: shape.Attributes()}
-	if len(shape.invariants) > 0 {
-		spec.Rules = []RuleSpec{{
-			Names:      append([]string(nil), shape.invariants...),
-			MinPresent: 1,
-			MaxPresent: 1,
-		}}
+	if len(shape.rules) > 0 {
+		spec.Rules = make([]RuleSpec, 0, len(shape.rules))
+		for _, rule := range shape.rules {
+			spec.Rules = append(spec.Rules, RuleSpec{
+				Names:      append([]string(nil), rule.Names...),
+				MinPresent: rule.MinPresent,
+				MaxPresent: rule.MaxPresent,
+			})
+		}
 	}
 	return spec
 }
@@ -200,7 +267,6 @@ func (shape *EnvelopeShape) validateValues(values EnvelopeValues) {
 type AcceptedEnvelopeAttribute interface {
 	attributeName() string
 	attributeType() reflect.Type
-	attributeInvariant() bool
 	attributeSpec() AttributeSpec
 	projectEnvelopeAttribute(callerpkg.Caller, EnvelopeValues) (string, any, bool)
 }
@@ -210,7 +276,6 @@ type EnvelopeAttribute[T any] struct {
 	name         string
 	valueType    reflect.Type
 	required     bool
-	invariant    bool
 	shape        Shape[T]
 	availability callerpkg.Set
 }
@@ -231,18 +296,6 @@ func RequiredField[T any](name string, shape Shape[T]) *EnvelopeAttribute[T] {
 // not contain a value for its name or when its provided value is nil.
 func OptionalField[T any](name string, shape Shape[T]) *EnvelopeAttribute[T] {
 	return newEnvelopeAttribute(name, shape)
-}
-
-// InvariantField declares one alternative in an exact-one envelope invariant.
-//
-// When an envelope contains invariant fields, every projection must emit
-// exactly one of them. Use invariant fields for response alternatives such as
-// either {"order": ...} or {"purchase_intent": ...}; use OptionalField only
-// for values that may genuinely be absent without selecting another branch.
-func InvariantField[T any](name string, shape Shape[T]) *EnvelopeAttribute[T] {
-	attribute := newEnvelopeAttribute(name, shape)
-	attribute.invariant = true
-	return attribute
 }
 
 func newEnvelopeAttribute[T any](name string, shape Shape[T]) *EnvelopeAttribute[T] {
@@ -272,10 +325,6 @@ func (attribute *EnvelopeAttribute[T]) attributeName() string {
 
 func (attribute *EnvelopeAttribute[T]) attributeType() reflect.Type {
 	return attribute.valueType
-}
-
-func (attribute *EnvelopeAttribute[T]) attributeInvariant() bool {
-	return attribute.invariant
 }
 
 func (attribute *EnvelopeAttribute[T]) attributeSpec() AttributeSpec {

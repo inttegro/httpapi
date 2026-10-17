@@ -87,14 +87,14 @@
 // omitted and do not satisfy the envelope's non-empty requirement. RequiredField
 // describes schema and per-field requiredness: a missing or nil required field
 // panics, but RequiredField is not needed merely to make the envelope non-empty.
-// InvariantField declares response alternatives. When an envelope contains
-// invariant fields, exactly one must be emitted; its ShapeSpec carries the same
-// exact-one rule for OpenAPI transcription:
+// ExactlyOneOf declares response alternatives. Every rule is evaluated
+// independently, and its ShapeSpec carries the same exact-one rule for OpenAPI
+// transcription:
 //
 //	var lookupEnvelope = response.Envelope(
-//		response.InvariantField("order", orderResponse),
-//		response.InvariantField("purchase_intent", purchaseIntentResponse),
-//	)
+//		response.OptionalField("order", orderResponse),
+//		response.OptionalField("purchase_intent", purchaseIntentResponse),
+//	).ExactlyOneOf("order", "purchase_intent")
 //
 // Keep using Object or Project when individual attributes need getters,
 // defaults, redaction, or domain-to-response preparation. Envelope also

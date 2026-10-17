@@ -279,32 +279,50 @@ func TestEnvelopePanicsForMissingRequiredField(t *testing.T) {
 	shape.ProjectForCaller(Fields(), responseWorkerCaller)
 }
 
-func TestEnvelopeInvariantFieldsRequireExactlyOneAlternative(t *testing.T) {
+func TestEnvelopeExactlyOneOfRequiresOneAlternativePerGroup(t *testing.T) {
 	shape := Envelope(
-		InvariantField("record", recordResponseShape()),
-		InvariantField("status", String()),
-	)
+		OptionalField("record", recordResponseShape()),
+		OptionalField("status", String()),
+		OptionalField("attempt", Int()),
+		OptionalField("cached", Bool()),
+	).
+		ExactlyOneOf("record", "status").
+		ExactlyOneOf("attempt", "cached")
 
-	record := shape.Body(Field("record", sampleRecordResponse())).
+	record := shape.Body(
+		Field("record", sampleRecordResponse()),
+		Field("attempt", 1),
+	).
 		ProjectResponse(responseWorkerCaller).(map[string]any)
 	if _, ok := record["record"]; !ok {
-		t.Fatalf("record invariant was not projected: %#v", record)
+		t.Fatalf("record alternative was not projected: %#v", record)
+	}
+	if record["attempt"] != 1 {
+		t.Fatalf("attempt alternative = %#v, want 1", record["attempt"])
 	}
 
-	status := shape.Body(Field("status", "ready")).
+	status := shape.Body(
+		Field("status", "ready"),
+		Field("cached", true),
+	).
 		ProjectResponse(responseWorkerCaller).(map[string]any)
 	if status["status"] != "ready" {
-		t.Fatalf("status invariant = %#v, want ready", status["status"])
+		t.Fatalf("status alternative = %#v, want ready", status["status"])
+	}
+	if status["cached"] != true {
+		t.Fatalf("cached alternative = %#v, want true", status["cached"])
 	}
 
 	for _, fields := range [][]EnvelopeField{
 		nil,
-		{Field("record", sampleRecordResponse()), Field("status", "ready")},
+		{Field("record", sampleRecordResponse())},
+		{Field("record", sampleRecordResponse()), Field("status", "ready"), Field("attempt", 1)},
+		{Field("record", sampleRecordResponse()), Field("attempt", 1), Field("cached", true)},
 	} {
 		func() {
 			defer func() {
 				if recover() == nil {
-					t.Fatalf("expected invariant panic for fields %#v", fields)
+					t.Fatalf("expected exact-one panic for fields %#v", fields)
 				}
 			}()
 			shape.ProjectForCaller(Fields(fields...), responseWorkerCaller)
@@ -312,13 +330,50 @@ func TestEnvelopeInvariantFieldsRequireExactlyOneAlternative(t *testing.T) {
 	}
 
 	spec := Describe(shape)
-	if len(spec.Rules) != 1 {
-		t.Fatalf("invariant rules = %#v, want one", spec.Rules)
+	if len(spec.Rules) != 2 {
+		t.Fatalf("exact-one rules = %#v, want two", spec.Rules)
 	}
-	rule := spec.Rules[0]
-	if !reflect.DeepEqual(rule.Names, []string{"record", "status"}) ||
-		rule.MinPresent != 1 || rule.MaxPresent != 1 {
-		t.Fatalf("invariant rule = %#v", rule)
+	for index, names := range [][]string{{"record", "status"}, {"attempt", "cached"}} {
+		rule := spec.Rules[index]
+		if !reflect.DeepEqual(rule.Names, names) ||
+			rule.MinPresent != 1 || rule.MaxPresent != 1 {
+			t.Fatalf("exact-one rule %d = %#v", index, rule)
+		}
+	}
+}
+
+func TestEnvelopeExactlyOneOfRejectsInvalidRules(t *testing.T) {
+	for name, define := range map[string]func(){
+		"too few attributes": func() {
+			Envelope(OptionalField("record", recordResponseShape())).ExactlyOneOf("record")
+		},
+		"empty attribute": func() {
+			Envelope(
+				OptionalField("record", recordResponseShape()),
+				OptionalField("status", String()),
+			).ExactlyOneOf("record", " ")
+		},
+		"unknown attribute": func() {
+			Envelope(
+				OptionalField("record", recordResponseShape()),
+				OptionalField("status", String()),
+			).ExactlyOneOf("record", "state")
+		},
+		"repeated attribute": func() {
+			Envelope(
+				OptionalField("record", recordResponseShape()),
+				OptionalField("status", String()),
+			).ExactlyOneOf("record", "record")
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			defer func() {
+				if recover() == nil {
+					t.Fatal("expected invalid exactly-one rule panic")
+				}
+			}()
+			define()
+		})
 	}
 }
 
