@@ -77,9 +77,41 @@ func FromResponseShape(shape responsepkg.ShapeSpec) spec.Schema {
 		} else {
 			schema.Properties = responseProperties(shape.Attributes)
 			schema.Required = responseRequired(shape.Attributes)
+			schema.AllOf = responseRules(shape.Rules)
 		}
 	case responsepkg.TypeArray:
 		schema.Items = responseItemSchema(shape.Item)
+	}
+	return schema
+}
+
+// FromResponseShapeSwagger2 translates a response shape into the Swagger 2.0
+// subset used by gateway documents. Presence invariants are omitted because
+// Swagger 2.0 cannot express oneOf; runtime projection still enforces them.
+func FromResponseShapeSwagger2(shape responsepkg.ShapeSpec) spec.Schema {
+	schema := responseTypeSchema(shape.Type)
+	if len(shape.Enum) > 0 {
+		schema.Enum = cloneStringSlice(shape.Enum)
+	}
+	if shape.Format != "" {
+		schema.Format = shape.Format
+	}
+	switch shape.Type {
+	case responsepkg.TypeObject:
+		if shape.MapValue != nil {
+			schema.AdditionalProperties = responseMapValueSchemaWith(
+				shape.MapValue,
+				FromResponseShapeSwagger2,
+			)
+		} else {
+			schema.Properties = responsePropertiesWith(
+				shape.Attributes,
+				FromResponseShapeSwagger2,
+			)
+			schema.Required = responseRequired(shape.Attributes)
+		}
+	case responsepkg.TypeArray:
+		schema.Items = responseItemSchemaWith(shape.Item, FromResponseShapeSwagger2)
 	}
 	return schema
 }
@@ -351,13 +383,20 @@ func discriminatorValues(discriminator *parampkg.DiscriminatorSpec) []string {
 }
 
 func responseProperties(attributes []responsepkg.AttributeSpec) map[string]spec.Schema {
+	return responsePropertiesWith(attributes, FromResponseShape)
+}
+
+func responsePropertiesWith(
+	attributes []responsepkg.AttributeSpec,
+	convert func(responsepkg.ShapeSpec) spec.Schema,
+) map[string]spec.Schema {
 	if len(attributes) == 0 {
 		return nil
 	}
 
 	properties := make(map[string]spec.Schema, len(attributes))
 	for _, attribute := range attributes {
-		properties[attribute.Name] = FromResponseShape(attribute.Shape)
+		properties[attribute.Name] = convert(attribute.Shape)
 	}
 	return properties
 }
@@ -376,21 +415,50 @@ func responseRequired(attributes []responsepkg.AttributeSpec) []string {
 }
 
 func responseItemSchema(shape *responsepkg.ShapeSpec) *spec.Schema {
+	return responseItemSchemaWith(shape, FromResponseShape)
+}
+
+func responseItemSchemaWith(
+	shape *responsepkg.ShapeSpec,
+	convert func(responsepkg.ShapeSpec) spec.Schema,
+) *spec.Schema {
 	if shape == nil {
 		schema := spec.Schema{}
 		return &schema
 	}
-	schema := FromResponseShape(*shape)
+	schema := convert(*shape)
 	return &schema
 }
 
 func responseMapValueSchema(shape *responsepkg.ShapeSpec) *spec.Schema {
+	return responseMapValueSchemaWith(shape, FromResponseShape)
+}
+
+func responseMapValueSchemaWith(
+	shape *responsepkg.ShapeSpec,
+	convert func(responsepkg.ShapeSpec) spec.Schema,
+) *spec.Schema {
 	if shape == nil {
 		schema := spec.Schema{}
 		return &schema
 	}
-	schema := FromResponseShape(*shape)
+	schema := convert(*shape)
 	return &schema
+}
+
+func responseRules(rules []responsepkg.RuleSpec) []spec.Schema {
+	allOf := make([]spec.Schema, 0, len(rules))
+	for _, rule := range rules {
+		if rule.MinPresent == 1 && rule.MaxPresent == 1 {
+			allOf = append(allOf, spec.Schema{
+				OneOf: requiredNameSchemas(rule.Names, 1),
+			})
+		}
+	}
+	if len(allOf) == 0 {
+		return nil
+	}
+	return allOf
 }
 
 func cloneStringSlice(values []string) []string {

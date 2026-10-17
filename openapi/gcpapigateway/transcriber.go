@@ -434,7 +434,7 @@ func responsesForEndpoint(endpoint endpointpkg.Endpoint) map[string]spec.Respons
 func responseForContract(contract endpointpkg.ResponseContract) spec.Response {
 	response := spec.Response{Description: responseDescription(contract.Description)}
 	if contract.Body.Type != "" {
-		schema := internalschema.FromResponseShape(contract.Body)
+		schema := internalschema.FromResponseShapeSwagger2(contract.Body)
 		response.Schema = &schema
 	}
 	return response

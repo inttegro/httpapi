@@ -17,6 +17,7 @@ import (
 // better fit.
 type EnvelopeShape struct {
 	attributes []AcceptedEnvelopeAttribute
+	invariants []string
 }
 
 // Envelope starts a JSON envelope response shape definition.
@@ -56,13 +57,17 @@ func (shape *EnvelopeShape) Attribute(attribute AcceptedEnvelopeAttribute) *Enve
 		}
 	}
 	shape.attributes = append(shape.attributes, attribute)
+	if attribute.attributeInvariant() {
+		shape.invariants = append(shape.invariants, attribute.attributeName())
+	}
 	return shape
 }
 
 // ProjectForCaller returns the JSON envelope visible to caller.
 //
 // An envelope response must emit at least one non-nil field for the active
-// caller. Optional nil fields are omitted; required nil fields panic.
+// caller. Optional nil fields are omitted; required nil fields panic. When the
+// shape declares invariant fields, exactly one invariant must be emitted.
 func (shape *EnvelopeShape) ProjectForCaller(values EnvelopeValues, caller callerpkg.Caller) map[string]any {
 	if shape == nil {
 		panic("httpapi/response: nil envelope shape")
@@ -75,6 +80,21 @@ func (shape *EnvelopeShape) ProjectForCaller(values EnvelopeValues, caller calle
 		name, projected, ok := attribute.projectEnvelopeAttribute(caller, values)
 		if ok {
 			object[name] = projected
+		}
+	}
+	if len(shape.invariants) > 0 {
+		present := 0
+		for _, name := range shape.invariants {
+			if _, ok := object[name]; ok {
+				present++
+			}
+		}
+		if present != 1 {
+			panic(fmt.Sprintf(
+				"httpapi/response: envelope requires exactly one invariant field from %s; got %d",
+				strings.Join(shape.invariants, ", "),
+				present,
+			))
 		}
 	}
 	if len(object) == 0 {
@@ -117,7 +137,15 @@ func (shape *EnvelopeShape) BodyValues(values EnvelopeValues) ShapedBody[Envelop
 }
 
 func (shape *EnvelopeShape) describeShape() ShapeSpec {
-	return ShapeSpec{Type: TypeObject, Attributes: shape.Attributes()}
+	spec := ShapeSpec{Type: TypeObject, Attributes: shape.Attributes()}
+	if len(shape.invariants) > 0 {
+		spec.Rules = []RuleSpec{{
+			Names:      append([]string(nil), shape.invariants...),
+			MinPresent: 1,
+			MaxPresent: 1,
+		}}
+	}
+	return spec
 }
 
 func (shape *EnvelopeShape) projectShape(caller callerpkg.Caller, values EnvelopeValues) any {
@@ -172,6 +200,7 @@ func (shape *EnvelopeShape) validateValues(values EnvelopeValues) {
 type AcceptedEnvelopeAttribute interface {
 	attributeName() string
 	attributeType() reflect.Type
+	attributeInvariant() bool
 	attributeSpec() AttributeSpec
 	projectEnvelopeAttribute(callerpkg.Caller, EnvelopeValues) (string, any, bool)
 }
@@ -181,6 +210,7 @@ type EnvelopeAttribute[T any] struct {
 	name         string
 	valueType    reflect.Type
 	required     bool
+	invariant    bool
 	shape        Shape[T]
 	availability callerpkg.Set
 }
@@ -201,6 +231,18 @@ func RequiredField[T any](name string, shape Shape[T]) *EnvelopeAttribute[T] {
 // not contain a value for its name or when its provided value is nil.
 func OptionalField[T any](name string, shape Shape[T]) *EnvelopeAttribute[T] {
 	return newEnvelopeAttribute(name, shape)
+}
+
+// InvariantField declares one alternative in an exact-one envelope invariant.
+//
+// When an envelope contains invariant fields, every projection must emit
+// exactly one of them. Use invariant fields for response alternatives such as
+// either {"order": ...} or {"purchase_intent": ...}; use OptionalField only
+// for values that may genuinely be absent without selecting another branch.
+func InvariantField[T any](name string, shape Shape[T]) *EnvelopeAttribute[T] {
+	attribute := newEnvelopeAttribute(name, shape)
+	attribute.invariant = true
+	return attribute
 }
 
 func newEnvelopeAttribute[T any](name string, shape Shape[T]) *EnvelopeAttribute[T] {
@@ -230,6 +272,10 @@ func (attribute *EnvelopeAttribute[T]) attributeName() string {
 
 func (attribute *EnvelopeAttribute[T]) attributeType() reflect.Type {
 	return attribute.valueType
+}
+
+func (attribute *EnvelopeAttribute[T]) attributeInvariant() bool {
+	return attribute.invariant
 }
 
 func (attribute *EnvelopeAttribute[T]) attributeSpec() AttributeSpec {

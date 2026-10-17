@@ -317,6 +317,33 @@ func TestFromResponseShapeIncludesMapAdditionalProperties(t *testing.T) {
 	}
 }
 
+func TestFromResponseShapeIncludesExactOneInvariant(t *testing.T) {
+	shape := response.Envelope(
+		response.InvariantField("order", response.Any[map[string]any]()),
+		response.InvariantField("purchase_intent", response.Any[*struct{}]()),
+	)
+
+	got := FromResponseShape(response.Describe(shape))
+	if len(got.AllOf) != 1 || len(got.AllOf[0].OneOf) != 2 {
+		t.Fatalf("invariant composition = %#v", got.AllOf)
+	}
+	if !reflect.DeepEqual(got.AllOf[0].OneOf[0].Required, []string{"order"}) ||
+		!reflect.DeepEqual(got.AllOf[0].OneOf[1].Required, []string{"purchase_intent"}) {
+		t.Fatalf("invariant branches = %#v", got.AllOf[0].OneOf)
+	}
+
+	swagger := FromResponseShapeSwagger2(response.Describe(shape))
+	if len(swagger.AllOf) != 0 {
+		t.Fatalf("swagger response contains unsupported invariant composition: %#v", swagger.AllOf)
+	}
+	if _, ok := swagger.Properties["order"]; !ok {
+		t.Fatalf("swagger response omitted order property: %#v", swagger.Properties)
+	}
+	if _, ok := swagger.Properties["purchase_intent"]; !ok {
+		t.Fatalf("swagger response omitted purchase_intent property: %#v", swagger.Properties)
+	}
+}
+
 func TestFromResponseShapeIncludesResponseMetaAdditionalProperties(t *testing.T) {
 	shape := response.Envelope(
 		response.RequiredField("status", response.String()),

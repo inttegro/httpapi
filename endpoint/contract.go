@@ -206,6 +206,12 @@ func cloneResponseShapeSpec(spec responsepkg.ShapeSpec) responsepkg.ShapeSpec {
 			cloned.Attributes = append(cloned.Attributes, cloneResponseAttributeSpec(attribute))
 		}
 	}
+	if len(spec.Rules) > 0 {
+		cloned.Rules = make([]responsepkg.RuleSpec, 0, len(spec.Rules))
+		for _, rule := range spec.Rules {
+			cloned.Rules = append(cloned.Rules, cloneResponseRuleSpec(rule))
+		}
+	}
 	return cloned
 }
 
@@ -220,6 +226,13 @@ func cloneResponseShapeSpecPointer(spec *responsepkg.ShapeSpec) *responsepkg.Sha
 func cloneResponseAttributeSpec(spec responsepkg.AttributeSpec) responsepkg.AttributeSpec {
 	spec.Availability = cloneCallerSet(spec.Availability)
 	spec.Shape = cloneResponseShapeSpec(spec.Shape)
+	return spec
+}
+
+func cloneResponseRuleSpec(spec responsepkg.RuleSpec) responsepkg.RuleSpec {
+	if len(spec.Names) > 0 {
+		spec.Names = append([]string(nil), spec.Names...)
+	}
 	return spec
 }
 

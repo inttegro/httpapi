@@ -141,6 +141,10 @@ func (meta *ResponseMeta) attributeType() reflect.Type {
 	return reflect.TypeFor[*ResponseMeta]()
 }
 
+func (meta *ResponseMeta) attributeInvariant() bool {
+	return false
+}
+
 func (meta *ResponseMeta) attributeSpec() AttributeSpec {
 	if meta == nil {
 		panic("httpapi/response: nil response meta")

@@ -2,6 +2,7 @@ package response
 
 import (
 	"net/http"
+	"reflect"
 	"strings"
 	"testing"
 )
@@ -276,6 +277,49 @@ func TestEnvelopePanicsForMissingRequiredField(t *testing.T) {
 	}()
 
 	shape.ProjectForCaller(Fields(), responseWorkerCaller)
+}
+
+func TestEnvelopeInvariantFieldsRequireExactlyOneAlternative(t *testing.T) {
+	shape := Envelope(
+		InvariantField("record", recordResponseShape()),
+		InvariantField("status", String()),
+	)
+
+	record := shape.Body(Field("record", sampleRecordResponse())).
+		ProjectResponse(responseWorkerCaller).(map[string]any)
+	if _, ok := record["record"]; !ok {
+		t.Fatalf("record invariant was not projected: %#v", record)
+	}
+
+	status := shape.Body(Field("status", "ready")).
+		ProjectResponse(responseWorkerCaller).(map[string]any)
+	if status["status"] != "ready" {
+		t.Fatalf("status invariant = %#v, want ready", status["status"])
+	}
+
+	for _, fields := range [][]EnvelopeField{
+		nil,
+		{Field("record", sampleRecordResponse()), Field("status", "ready")},
+	} {
+		func() {
+			defer func() {
+				if recover() == nil {
+					t.Fatalf("expected invariant panic for fields %#v", fields)
+				}
+			}()
+			shape.ProjectForCaller(Fields(fields...), responseWorkerCaller)
+		}()
+	}
+
+	spec := Describe(shape)
+	if len(spec.Rules) != 1 {
+		t.Fatalf("invariant rules = %#v, want one", spec.Rules)
+	}
+	rule := spec.Rules[0]
+	if !reflect.DeepEqual(rule.Names, []string{"record", "status"}) ||
+		rule.MinPresent != 1 || rule.MaxPresent != 1 {
+		t.Fatalf("invariant rule = %#v", rule)
+	}
 }
 
 func TestEnvelopePanicsForWrongFieldType(t *testing.T) {

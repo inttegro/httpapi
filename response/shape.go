@@ -65,6 +65,16 @@ type ShapeSpec struct {
 	// MapValue describes map values when Type is TypeObject and the object has
 	// arbitrary string keys.
 	MapValue *ShapeSpec
+
+	// Rules describes object-level presence invariants over attributes.
+	Rules []RuleSpec
+}
+
+// RuleSpec describes an object-level presence invariant over an attribute set.
+type RuleSpec struct {
+	Names      []string
+	MinPresent int
+	MaxPresent int
 }
 
 // Shape describes the JSON value emitted by a response attribute.
