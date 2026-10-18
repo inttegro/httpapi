@@ -546,7 +546,7 @@ func writeRenderedResponse(
 ) (int, error) {
 	result, err := responsepkg.WriteResponse(w, req.Res, responsepkg.WriteOptions{
 		RequestID:    req.ID,
-		Caller:       req.RequestCaller(),
+		Context:      req.ResponseContext(),
 		Duration:     req.Dur,
 		WriteTimeout: normalizeEndpointTimeoutSpec(timeout).Write,
 	})
@@ -562,7 +562,7 @@ func writeRenderedResponse(
 	responsepkg.RenderErr(req, e.Unexpected())
 	result, err = responsepkg.WriteResponse(w, req.Res, responsepkg.WriteOptions{
 		RequestID:    req.ID,
-		Caller:       req.RequestCaller(),
+		Context:      req.ResponseContext(),
 		Duration:     req.Dur,
 		WriteTimeout: normalizeEndpointTimeoutSpec(timeout).Write,
 	})

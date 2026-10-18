@@ -172,7 +172,7 @@ func TestErrorShapeDescribesAndProjectsStandardErrorBody(t *testing.T) {
 		t.Fatalf("error attribute = %#v", spec.Attributes[0])
 	}
 
-	body := ErrorShape.ProjectForCaller(ErrorBody{Err: e.InvalidRequestBody()}, callerpkg.Caller{})
+	body := ErrorShape.Project(ErrorBody{Err: e.InvalidRequestBody()}, Context{Caller: callerpkg.Caller{}})
 	errObject, ok := body["error"].(map[string]any)
 	if !ok {
 		t.Fatalf("projected error = %#v", body["error"])

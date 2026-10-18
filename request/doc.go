@@ -9,9 +9,9 @@
 // Trusted middleware can attach an application-defined caller with
 // ContextWithCaller and an already authenticated session with ContextWithSession.
 // NewReq also knows how to call the configured Authenticator when credentials
-// are present. Response rendering reads the caller back through RequestCaller so
-// handlers can render caller-aware response bodies without passing caller values
-// by hand.
+// are present. Response rendering reads ResponseContext from Req so handlers can
+// render context-aware response bodies without passing authority or property
+// selection by hand.
 //
 // NewReq creates a request operation recorder and attaches it to the underlying
 // context before authentication runs. Handlers and helper packages can attach

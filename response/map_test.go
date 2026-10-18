@@ -4,7 +4,7 @@ import (
 	"testing"
 )
 
-func TestMapOfProjectsValuesForCaller(t *testing.T) {
+func TestMapOfProjectsValuesInContext(t *testing.T) {
 	shape := MapOf(detailResponseShape())
 	values := map[string]detailResponse{
 		"primary": {
@@ -19,7 +19,7 @@ func TestMapOfProjectsValuesForCaller(t *testing.T) {
 		},
 	}
 
-	got := Body(shape, values).ProjectResponse(responsePublicCaller).(map[string]any)
+	got := Body(shape, values).Project(Context{Caller: responsePublicCaller}).(map[string]any)
 
 	primary := got["primary"].(map[string]any)
 	if primary["status"] != "ready" {
@@ -37,7 +37,7 @@ func TestMapOfProjectsValuesForCaller(t *testing.T) {
 		t.Fatalf("secondary internal_ref was visible to public caller: %#v", secondary)
 	}
 
-	got = Body(shape, values).ProjectResponse(responseWorkerCaller).(map[string]any)
+	got = Body(shape, values).Project(Context{Caller: responseWorkerCaller}).(map[string]any)
 
 	primary = got["primary"].(map[string]any)
 	if primary["internal_ref"] != "ref_primary" {

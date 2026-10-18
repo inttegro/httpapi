@@ -13,9 +13,9 @@ func TestEnvelopeProjectsNamedFields(t *testing.T) {
 		OptionalField("error", String()),
 	)
 
-	got := shape.ProjectForCaller(Fields(
+	got := shape.Project(Fields(
 		Field("record", sampleRecordResponse()),
-	), responseWorkerCaller)
+	), Context{Caller: responseWorkerCaller})
 
 	record := got["record"].(map[string]any)
 	if record["id"] != "rec_123" || record["created_from"] != "worker" {
@@ -32,19 +32,19 @@ func TestEnvelopeOmitsUnavailableFields(t *testing.T) {
 		OptionalField("internal_note", String()).AvailableTo(responseWorkerCaller),
 	)
 
-	got := shape.ProjectForCaller(Fields(
+	got := shape.Project(Fields(
 		Field("record", sampleRecordResponse()),
 		Field("internal_note", "visible to worker"),
-	), responsePublicCaller)
+	), Context{Caller: responsePublicCaller})
 
 	if _, ok := got["internal_note"]; ok {
 		t.Fatalf("internal_note was visible to public caller: %#v", got)
 	}
 
-	got = shape.ProjectForCaller(Fields(
+	got = shape.Project(Fields(
 		Field("record", sampleRecordResponse()),
 		Field("internal_note", "visible to worker"),
-	), responseWorkerCaller)
+	), Context{Caller: responseWorkerCaller})
 
 	if got["internal_note"] != "visible to worker" {
 		t.Fatalf("internal_note = %#v, want visible to worker", got["internal_note"])
@@ -88,9 +88,9 @@ func TestEnvelopeBodyRendersThroughJSONEncoding(t *testing.T) {
 		Field("record", sampleRecordResponse()),
 	))
 
-	body, err := EncodeResponseBodyForCaller(res, responsePublicCaller)
+	body, err := EncodeResponseBody(res, Context{Caller: responsePublicCaller})
 	if err != nil {
-		t.Fatalf("EncodeResponseBodyForCaller error = %v", err)
+		t.Fatalf("EncodeResponseBody error = %v", err)
 	}
 
 	bodyText := string(body)
@@ -108,8 +108,7 @@ func TestEnvelopeBodyAcceptsFieldsDirectly(t *testing.T) {
 		OptionalField("error", String()),
 	)
 
-	got := shape.Body(Field("record", sampleRecordResponse())).
-		ProjectResponse(responseWorkerCaller).(map[string]any)
+	got := shape.Body(Field("record", sampleRecordResponse())).Project(Context{Caller: responseWorkerCaller}).(map[string]any)
 
 	record := got["record"].(map[string]any)
 	if record["id"] != "rec_123" {
@@ -137,12 +136,12 @@ func TestEnvelopeProjectsDistinctGoTypesWithSameJSONShape(t *testing.T) {
 		RequiredField("limit", itemLimitShape),
 	)
 
-	got := shape.ProjectForCaller(Fields(
+	got := shape.Project(Fields(
 		Field("secondary_label", secondaryLabel("settled")),
 		Field("primary_label", primaryLabel("pending")),
 		Field("limit", itemLimit(10)),
 		Field("count", itemCount(3)),
-	), responseWorkerCaller)
+	), Context{Caller: responseWorkerCaller})
 
 	if got["primary_label"] != "pending" {
 		t.Fatalf("primary_label = %#v, want pending", got["primary_label"])
@@ -165,10 +164,10 @@ func TestEnvelopeOmitsOptionalNilFields(t *testing.T) {
 			OptionalField("status", String()),
 		)
 
-		got := shape.ProjectForCaller(Fields(
+		got := shape.Project(Fields(
 			Field("record", (*recordResponse)(nil)),
 			Field("status", "ready"),
-		), responseWorkerCaller)
+		), Context{Caller: responseWorkerCaller})
 
 		if _, ok := got["record"]; ok {
 			t.Fatalf("typed nil optional field was emitted: %#v", got)
@@ -184,10 +183,10 @@ func TestEnvelopeOmitsOptionalNilFields(t *testing.T) {
 			OptionalField("status", String()),
 		)
 
-		got := shape.ProjectForCaller(Fields(
+		got := shape.Project(Fields(
 			Field[any]("metadata", nil),
 			Field("status", "ready"),
-		), responseWorkerCaller)
+		), Context{Caller: responseWorkerCaller})
 
 		if _, ok := got["metadata"]; ok {
 			t.Fatalf("nil interface optional field was emitted: %#v", got)
@@ -203,10 +202,10 @@ func TestEnvelopeOmitsOptionalNilFields(t *testing.T) {
 			OptionalField("status", String()),
 		)
 
-		got := shape.ProjectForCaller(Fields(
+		got := shape.Project(Fields(
 			Field("tags", []string(nil)),
 			Field("status", "ready"),
-		), responseWorkerCaller)
+		), Context{Caller: responseWorkerCaller})
 
 		if _, ok := got["tags"]; ok {
 			t.Fatalf("nil slice optional field was emitted: %#v", got)
@@ -221,9 +220,9 @@ func TestEnvelopeOmitsOptionalNilFields(t *testing.T) {
 			OptionalField("tags", Array[string]()),
 		)
 
-		got := shape.ProjectForCaller(Fields(
+		got := shape.Project(Fields(
 			Field("tags", []string{}),
-		), responseWorkerCaller)
+		), Context{Caller: responseWorkerCaller})
 
 		tags, ok := got["tags"].([]string)
 		if !ok {
@@ -254,7 +253,7 @@ func TestEnvelopeCanShapeNestedStructlessObjects(t *testing.T) {
 		Field("number", pageNumber(2)),
 		Field("size", pageSize(50)),
 		Field("records", []recordResponse{sampleRecordResponse()}),
-	))).ProjectResponse(responseWorkerCaller).(map[string]any)
+	))).Project(Context{Caller: responseWorkerCaller}).(map[string]any)
 
 	page := got["page"].(map[string]any)
 	if page["number"] != 2 || page["size"] != 50 {
@@ -276,7 +275,7 @@ func TestEnvelopePanicsForMissingRequiredField(t *testing.T) {
 		}
 	}()
 
-	shape.ProjectForCaller(Fields(), responseWorkerCaller)
+	shape.Project(Fields(), Context{Caller: responseWorkerCaller})
 }
 
 func TestEnvelopeExactlyOneOfRequiresOneAlternativePerGroup(t *testing.T) {
@@ -292,8 +291,7 @@ func TestEnvelopeExactlyOneOfRequiresOneAlternativePerGroup(t *testing.T) {
 	record := shape.Body(
 		Field("record", sampleRecordResponse()),
 		Field("attempt", 1),
-	).
-		ProjectResponse(responseWorkerCaller).(map[string]any)
+	).Project(Context{Caller: responseWorkerCaller}).(map[string]any)
 	if _, ok := record["record"]; !ok {
 		t.Fatalf("record alternative was not projected: %#v", record)
 	}
@@ -304,8 +302,7 @@ func TestEnvelopeExactlyOneOfRequiresOneAlternativePerGroup(t *testing.T) {
 	status := shape.Body(
 		Field("status", "ready"),
 		Field("cached", true),
-	).
-		ProjectResponse(responseWorkerCaller).(map[string]any)
+	).Project(Context{Caller: responseWorkerCaller}).(map[string]any)
 	if status["status"] != "ready" {
 		t.Fatalf("status alternative = %#v, want ready", status["status"])
 	}
@@ -325,7 +322,7 @@ func TestEnvelopeExactlyOneOfRequiresOneAlternativePerGroup(t *testing.T) {
 					t.Fatalf("expected exact-one panic for fields %#v", fields)
 				}
 			}()
-			shape.ProjectForCaller(Fields(fields...), responseWorkerCaller)
+			shape.Project(Fields(fields...), Context{Caller: responseWorkerCaller})
 		}()
 	}
 
@@ -386,7 +383,7 @@ func TestEnvelopePanicsForWrongFieldType(t *testing.T) {
 		}
 	}()
 
-	shape.ProjectForCaller(Fields(Field("record", "not a record")), responseWorkerCaller)
+	shape.Project(Fields(Field("record", "not a record")), Context{Caller: responseWorkerCaller})
 }
 
 func TestEnvelopePanicsForUnexpectedField(t *testing.T) {
@@ -398,7 +395,7 @@ func TestEnvelopePanicsForUnexpectedField(t *testing.T) {
 		}
 	}()
 
-	shape.ProjectForCaller(Fields(Field("recrod", sampleRecordResponse())), responseWorkerCaller)
+	shape.Project(Fields(Field("recrod", sampleRecordResponse())), Context{Caller: responseWorkerCaller})
 }
 
 func TestEnvelopePanicsForEmptyDefinitions(t *testing.T) {
@@ -421,7 +418,7 @@ func TestEnvelopePanicsForEmptyDefinitions(t *testing.T) {
 			}
 		}()
 
-		shape.ProjectForCaller(Fields(), responseWorkerCaller)
+		shape.Project(Fields(), Context{Caller: responseWorkerCaller})
 	})
 
 	t.Run("zero value description", func(t *testing.T) {
@@ -447,7 +444,7 @@ func TestEnvelopePanicsWhenProjectionEmitsNoFields(t *testing.T) {
 			}
 		}()
 
-		shape.ProjectForCaller(Fields(), responseWorkerCaller)
+		shape.Project(Fields(), Context{Caller: responseWorkerCaller})
 	})
 
 	t.Run("nil values", func(t *testing.T) {
@@ -459,7 +456,7 @@ func TestEnvelopePanicsWhenProjectionEmitsNoFields(t *testing.T) {
 			}
 		}()
 
-		shape.ProjectForCaller(EnvelopeValues{}, responseWorkerCaller)
+		shape.Project(EnvelopeValues{}, Context{Caller: responseWorkerCaller})
 	})
 
 	t.Run("only optional nil value", func(t *testing.T) {
@@ -471,7 +468,7 @@ func TestEnvelopePanicsWhenProjectionEmitsNoFields(t *testing.T) {
 			}
 		}()
 
-		shape.ProjectForCaller(Fields(Field[any]("value", nil)), responseWorkerCaller)
+		shape.Project(Fields(Field[any]("value", nil)), Context{Caller: responseWorkerCaller})
 	})
 
 	t.Run("all values unavailable", func(t *testing.T) {
@@ -485,9 +482,10 @@ func TestEnvelopePanicsWhenProjectionEmitsNoFields(t *testing.T) {
 			}
 		}()
 
-		shape.ProjectForCaller(Fields(
+		shape.Project(Fields(
 			Field("internal_note", "visible to worker"),
-		), responsePublicCaller)
+		), Context{Caller: responsePublicCaller})
+
 	})
 
 	t.Run("all values nil", func(t *testing.T) {
@@ -502,10 +500,11 @@ func TestEnvelopePanicsWhenProjectionEmitsNoFields(t *testing.T) {
 			}
 		}()
 
-		shape.ProjectForCaller(Fields(
+		shape.Project(Fields(
 			Field("record", (*recordResponse)(nil)),
 			Field("tags", []string(nil)),
-		), responseWorkerCaller)
+		), Context{Caller: responseWorkerCaller})
+
 	})
 
 	t.Run("render", func(t *testing.T) {
@@ -519,7 +518,7 @@ func TestEnvelopePanicsWhenProjectionEmitsNoFields(t *testing.T) {
 			}
 		}()
 
-		_, _ = EncodeResponseBodyForCaller(res, responseWorkerCaller)
+		_, _ = EncodeResponseBody(res, Context{Caller: responseWorkerCaller})
 	})
 }
 
@@ -530,10 +529,10 @@ func TestEnvelopeOptionalFieldsOmitNilValues(t *testing.T) {
 			RequiredField("fallback", String()),
 		)
 
-		got := shape.ProjectForCaller(Fields(
+		got := shape.Project(Fields(
 			Field[any]("value", nil),
 			Field("fallback", "ok"),
-		), responseWorkerCaller)
+		), Context{Caller: responseWorkerCaller})
 
 		if _, ok := got["value"]; ok {
 			t.Fatalf("nil optional value was emitted: %#v", got)
@@ -550,10 +549,10 @@ func TestEnvelopeOptionalFieldsOmitNilValues(t *testing.T) {
 		)
 		var record *recordResponse
 
-		got := shape.ProjectForCaller(Fields(
+		got := shape.Project(Fields(
 			Field("record", record),
 			Field("fallback", "ok"),
-		), responseWorkerCaller)
+		), Context{Caller: responseWorkerCaller})
 
 		if _, ok := got["record"]; ok {
 			t.Fatalf("typed nil pointer optional value was emitted: %#v", got)
@@ -569,11 +568,11 @@ func TestEnvelopeOptionalFieldsOmitNilValues(t *testing.T) {
 		var metadata map[string]string
 		var tags []string
 
-		got := shape.ProjectForCaller(Fields(
+		got := shape.Project(Fields(
 			Field("metadata", metadata),
 			Field("tags", tags),
 			Field("fallback", "ok"),
-		), responseWorkerCaller)
+		), Context{Caller: responseWorkerCaller})
 
 		if _, ok := got["metadata"]; ok {
 			t.Fatalf("nil map optional value was emitted: %#v", got)
@@ -590,10 +589,10 @@ func TestEnvelopeOptionalFieldsCountNonNilEmptyCollections(t *testing.T) {
 		OptionalField("tags", Array[string]()),
 	)
 
-	got := shape.ProjectForCaller(Fields(
+	got := shape.Project(Fields(
 		Field("metadata", map[string]string{}),
 		Field("tags", []string{}),
-	), responseWorkerCaller)
+	), Context{Caller: responseWorkerCaller})
 
 	if metadata, ok := got["metadata"].(map[string]any); !ok || len(metadata) != 0 {
 		t.Fatalf("metadata = %#v, want empty projected map", got["metadata"])
@@ -639,7 +638,7 @@ func TestEnvelopePanicsForRequiredNilValues(t *testing.T) {
 				}
 			}()
 
-			tt.shape.ProjectForCaller(Fields(tt.field), responseWorkerCaller)
+			tt.shape.Project(Fields(tt.field), Context{Caller: responseWorkerCaller})
 		})
 	}
 }

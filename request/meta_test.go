@@ -33,7 +33,7 @@ func TestPrepareMetaAttachesProjectionAndStripsEnvelope(t *testing.T) {
 		t.Fatalf("idempotency key = %q", got)
 	}
 
-	projection := req.ResponsePropertyProjection()
+	projection := req.ResponseProjection()
 	if got := projection.Resources(); !reflect.DeepEqual(got, []string{"merchant", "product"}) {
 		t.Fatalf("resources = %#v", got)
 	}
@@ -68,7 +68,7 @@ func TestPrepareMetaRejectsPickAndOmitForSameResource(t *testing.T) {
 	if err.Code != param.CodeMutuallyExclusive {
 		t.Fatalf("error code = %q", err.Code)
 	}
-	if req.ResponsePropertyProjection().Defined() {
+	if req.ResponseProjection().Defined() {
 		t.Fatal("invalid projection was attached")
 	}
 }
@@ -149,14 +149,14 @@ func TestResponseProjectionReturnsDefensiveCopies(t *testing.T) {
 		t.Fatalf("PrepareMeta error = %v", err)
 	}
 
-	selection, ok := req.ResponsePropertyProjection().Resource("product")
+	selection, ok := req.ResponseProjection().Resource("product")
 	if !ok {
 		t.Fatal("product projection missing")
 	}
 	paths := selection.Paths()
 	paths[0] = "mutated"
 
-	selection, _ = req.ResponsePropertyProjection().Resource("product")
+	selection, _ = req.ResponseProjection().Resource("product")
 	if got := selection.Paths()[0]; got != "id" {
 		t.Fatalf("stored projection was mutated: %q", got)
 	}
@@ -210,7 +210,7 @@ func TestPrepareMetaIsIdempotent(t *testing.T) {
 	if err := req.PrepareMeta(); err != nil {
 		t.Fatalf("second PrepareMeta error = %v", err)
 	}
-	if req.ResponsePropertyProjection().Includes("product", "media.gallery") {
+	if req.ResponseProjection().Includes("product", "media.gallery") {
 		t.Fatal("second preparation discarded projection")
 	}
 }

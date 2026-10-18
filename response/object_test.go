@@ -48,7 +48,7 @@ func TestObjectProjectOmitsUnavailableAttributes(t *testing.T) {
 	shape := recordResponseShape()
 	record := sampleRecordResponse()
 
-	got := shape.ProjectForCaller(record, responsePublicCaller)
+	got := shape.Project(record, Context{Caller: responsePublicCaller})
 
 	if got["id"] != "rec_123" || got["count"] != int64(7) {
 		t.Fatalf("projected public fields = %#v", got)
@@ -71,7 +71,7 @@ func TestObjectProjectIncludesAvailableAttributes(t *testing.T) {
 	shape := recordResponseShape()
 	record := sampleRecordResponse()
 
-	got := shape.ProjectForCaller(record, responseWorkerCaller)
+	got := shape.Project(record, Context{Caller: responseWorkerCaller})
 
 	if got["created_from"] != "worker" {
 		t.Fatalf("created_from = %#v, want worker", got["created_from"])
@@ -90,7 +90,7 @@ func TestObjectProjectIncludesAvailableAttributes(t *testing.T) {
 func TestBodyProjectsWithAnyResponseShape(t *testing.T) {
 	body := Body(recordResponseShape(), sampleRecordResponse())
 
-	got := body.ProjectResponse(responsePublicCaller).(map[string]any)
+	got := body.Project(Context{Caller: responsePublicCaller}).(map[string]any)
 
 	if got["id"] != "rec_123" {
 		t.Fatalf("id = %#v, want rec_123", got["id"])
@@ -139,7 +139,7 @@ func TestObjectProjectOmitsAbsentOptionalAttributes(t *testing.T) {
 	record.CreatedFrom = ""
 	record.Detail.InternalSeen = false
 
-	got := shape.ProjectForCaller(record, responseWorkerCaller)
+	got := shape.Project(record, Context{Caller: responseWorkerCaller})
 
 	if _, ok := got["created_from"]; ok {
 		t.Fatalf("absent created_from was emitted: %#v", got)
@@ -165,7 +165,7 @@ func TestObjectShapePanicsForDuplicateAttributes(t *testing.T) {
 		}
 	}()
 
-	shape.ProjectForCaller(sampleRecordResponse(), responseWorkerCaller)
+	shape.Project(sampleRecordResponse(), Context{Caller: responseWorkerCaller})
 }
 
 func TestProjectPreparesSourceValueOnce(t *testing.T) {
@@ -181,7 +181,7 @@ func TestProjectPreparesSourceValueOnce(t *testing.T) {
 		},
 	)
 
-	got := shape.ProjectForCaller(sampleRecordResponse(), responseWorkerCaller).(map[string]any)
+	got := shape.Project(sampleRecordResponse(), Context{Caller: responseWorkerCaller}).(map[string]any)
 
 	if got["id"] != "rec_123" || got["created_from"] != "worker" {
 		t.Fatalf("prepared projection = %#v", got)
@@ -190,7 +190,7 @@ func TestProjectPreparesSourceValueOnce(t *testing.T) {
 		t.Fatalf("prepare calls = %d, want 1", prepareCalls)
 	}
 
-	got = shape.ProjectForCaller(sampleRecordResponse(), responsePublicCaller).(map[string]any)
+	got = shape.Project(sampleRecordResponse(), Context{Caller: responsePublicCaller}).(map[string]any)
 
 	if _, ok := got["created_from"]; ok {
 		t.Fatalf("unavailable prepared attribute was visible: %#v", got)

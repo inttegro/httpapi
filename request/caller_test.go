@@ -15,8 +15,8 @@ import (
 
 type callerProjectionBody struct{}
 
-func (callerProjectionBody) ProjectResponse(caller callerpkg.Caller) any {
-	return map[string]string{"caller": caller.Name()}
+func (callerProjectionBody) Project(context responsepkg.Context) any {
+	return map[string]string{"caller": context.Caller.Name()}
 }
 
 func TestNewReqAttachesCallerFromContext(t *testing.T) {

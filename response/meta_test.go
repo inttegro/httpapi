@@ -12,14 +12,14 @@ func TestResponseMetaProjectsThroughEnvelope(t *testing.T) {
 		Meta(),
 	)
 
-	got := shape.ProjectForCaller(Fields(
+	got := shape.Project(Fields(
 		Field("record", sampleRecordResponse()),
 		WithMeta(Meta().
 			RequestID("req_123").
 			Set("processing_ms", 84).
 			Debug("routing", "primary").
 			Debug("provider_attempts", 1)),
-	), responseWorkerCaller)
+	), Context{Caller: responseWorkerCaller})
 
 	rawMeta, ok := got[ResponseMetaName].(map[string]any)
 	if !ok {
@@ -58,10 +58,10 @@ func TestResponseMetaOmitsEmptyValues(t *testing.T) {
 		Meta(),
 	)
 
-	got := shape.ProjectForCaller(Fields(
+	got := shape.Project(Fields(
 		Field("status", "ok"),
 		WithMeta(Meta()),
-	), responseWorkerCaller)
+	), Context{Caller: responseWorkerCaller})
 
 	if _, ok := got[ResponseMetaName]; ok {
 		t.Fatalf("empty response_meta was emitted: %#v", got)
@@ -210,12 +210,12 @@ func TestResponseMetaAvailableToRestrictsEnvelopeProjection(t *testing.T) {
 		WithMeta(Meta().Set("processing_ms", 84)),
 	)
 
-	public := shape.ProjectForCaller(fields, responsePublicCaller)
+	public := shape.Project(fields, Context{Caller: responsePublicCaller})
 	if _, ok := public[ResponseMetaName]; ok {
 		t.Fatalf("response_meta was visible to public caller: %#v", public)
 	}
 
-	worker := shape.ProjectForCaller(fields, responseWorkerCaller)
+	worker := shape.Project(fields, Context{Caller: responseWorkerCaller})
 	if _, ok := worker[ResponseMetaName]; !ok {
 		t.Fatalf("response_meta was hidden from worker caller: %#v", worker)
 	}

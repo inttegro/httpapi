@@ -187,10 +187,9 @@ type Target interface {
 
 // Render sets res on the target.
 //
-// If res.Body is caller-aware and target exposes ResponseCaller, Render
+// If res.Body is context-aware and target exposes ResponseContext, Render
 // projects the body immediately and stores the projected response on the
-// target. Legacy targets that only expose RequestCaller remain supported. This
-// is the ergonomic path for endpoint handlers.
+// target. This is the ergonomic path for endpoint handlers.
 func Render(r Target, res *Res) {
 	if r == nil {
 		return

@@ -272,11 +272,18 @@ on `request.Req`, which lets them skip optional reads and enrichment instead of
 building data that serialization will discard:
 
 ```go
-projection := r.ResponsePropertyProjection()
+projection := r.ResponseProjection()
 if projection.Includes("product", "media.gallery") {
 	product.Media.Gallery = loadGallery(product.ID)
 }
 ```
+
+Typed response shapes also apply the validated selection while constructing the
+response object. An omitted attribute's getter is never called, its nested shape
+is never traversed, and it is never added to an intermediate object merely to be
+removed before JSON encoding. Handler inspection remains useful for avoiding
+upstream work such as database reads or remote enrichment; it is not required
+to keep omitted properties out of the serialized response.
 
 The shared runtime validates the envelope, mutual exclusion, path syntax, and
 set invariants. It then derives each endpoint's valid resources and property
@@ -290,7 +297,7 @@ ordinary requests incur neither compilation nor projection-index storage:
 func lookup(r *request.Req) {
 	// The runtime has already validated this against the endpoint's response
 	// shapes, including caller-specific attribute availability.
-	projection := r.ResponsePropertyProjection()
+	projection := r.ResponseProjection()
 	if projection.Includes("product", "media.gallery") {
 		// Load optional gallery data only when the caller requested it.
 	}

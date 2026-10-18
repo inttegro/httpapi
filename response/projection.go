@@ -1,35 +1,11 @@
 package response
 
-import callerpkg "github.com/zebodotdev/httpapi/caller"
-
-// ResponseCallerTarget is a response target that can expose the caller used to
-// project the response being rendered.
+// Projector is a response body that can project itself in a rendering context.
 //
-// request.Req satisfies this interface. Render uses it to project shaped bodies
-// without asking endpoint handlers to pass caller information manually.
-type ResponseCallerTarget interface {
-	Target
-
-	// ResponseCaller returns the application-defined response projection caller.
-	ResponseCaller() callerpkg.Caller
-}
-
-// CallerTarget is the legacy response target interface used before request
-// authority and response projection were separated. Custom targets that only
-// implement CallerTarget remain supported.
-type CallerTarget interface {
-	Target
-
-	RequestCaller() callerpkg.Caller
-}
-
-// CallerProjector is a response body that can project itself for a caller.
-//
-// ShapedBody implements CallerProjector. Custom body types may implement it
-// when they need caller-aware projection but do not fit ObjectShape.
-type CallerProjector interface {
-	// ProjectResponse returns the body visible to caller.
-	ProjectResponse(caller callerpkg.Caller) any
+// ShapedBody implements Projector. Custom body types may implement it when they
+// need context-aware projection but do not fit ObjectShape.
+type Projector interface {
+	Project(Context) any
 }
 
 func responseForTarget(target Target, res *Res) *Res {
@@ -37,7 +13,7 @@ func responseForTarget(target Target, res *Res) *Res {
 		return nil
 	}
 
-	body, ok := projectResponseBody(res.Body, callerFromTarget(target))
+	body, ok := projectResponseBody(res.Body, contextFromTarget(target))
 	if !ok {
 		return res
 	}
@@ -48,22 +24,18 @@ func responseForTarget(target Target, res *Res) *Res {
 	return &projected
 }
 
-func callerFromTarget(target Target) callerpkg.Caller {
-	responseCallerTarget, ok := target.(ResponseCallerTarget)
-	if ok {
-		return responseCallerTarget.ResponseCaller()
-	}
-	callerTarget, ok := target.(CallerTarget)
+func contextFromTarget(target Target) Context {
+	contextual, ok := target.(ContextTarget)
 	if !ok {
-		return callerpkg.Caller{}
+		return Context{}
 	}
-	return callerTarget.RequestCaller()
+	return contextual.ResponseContext()
 }
 
-func projectResponseBody(body any, caller callerpkg.Caller) (any, bool) {
-	projector, ok := body.(CallerProjector)
+func projectResponseBody(body any, context Context) (any, bool) {
+	projector, ok := body.(Projector)
 	if !ok {
 		return body, false
 	}
-	return projector.ProjectResponse(caller), true
+	return projector.Project(context), true
 }

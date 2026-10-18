@@ -156,13 +156,13 @@ func (meta *ResponseMeta) attributeSpec() AttributeSpec {
 }
 
 func (meta *ResponseMeta) projectEnvelopeAttribute(
-	caller callerpkg.Caller,
+	context projectionContext,
 	values EnvelopeValues,
 ) (string, any, bool) {
 	if meta == nil {
 		panic("httpapi/response: nil response meta")
 	}
-	if !meta.availability.Allows(caller) {
+	if !meta.availability.Allows(context.Caller) || !context.includesAttribute(ResponseMetaName) {
 		return "", nil, false
 	}
 

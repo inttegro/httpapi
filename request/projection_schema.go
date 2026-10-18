@@ -55,10 +55,10 @@ type responseProjectionEdge struct {
 	child   uint32
 }
 
-// ValidateForCaller validates projection against the resources and properties
+// Validate validates projection against the resources and properties
 // visible to caller. It prevents a projection error from revealing restricted
 // response attributes to callers that cannot receive them.
-func (schema ResponseProjectionSchema) ValidateForCaller(
+func (schema ResponseProjectionSchema) Validate(
 	projection ResponseProjection,
 	caller callerpkg.Caller,
 ) *param.Error {

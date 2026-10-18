@@ -5,8 +5,6 @@ import (
 	"slices"
 	"strings"
 	"time"
-
-	callerpkg "github.com/zebodotdev/httpapi/caller"
 )
 
 // Type identifies the JSON type emitted by a response shape.
@@ -79,11 +77,11 @@ type RuleSpec struct {
 
 // Shape describes the JSON value emitted by a response attribute.
 //
-// Shapes are used at render time to project caller-aware response bodies and at
+// Shapes are used at render time to project context-aware response bodies and at
 // transcription time to expose the same response contract to OpenAPI writers.
 type Shape[T any] interface {
 	describeShape() ShapeSpec
-	projectShape(callerpkg.Caller, T) any
+	projectShape(projectionContext, T) any
 }
 
 type scalarShape[T any] struct {
@@ -95,7 +93,7 @@ func (shape scalarShape[T]) describeShape() ShapeSpec {
 	return ShapeSpec{Type: shape.typ, Format: shape.format}
 }
 
-func (shape scalarShape[T]) projectShape(_ callerpkg.Caller, value T) any {
+func (shape scalarShape[T]) projectShape(_ projectionContext, value T) any {
 	return value
 }
 
@@ -116,7 +114,7 @@ func (shape enumShape) describeShape() ShapeSpec {
 	return ShapeSpec{Type: TypeString, Enum: slices.Clone(shape.values)}
 }
 
-func (shape enumShape) projectShape(_ callerpkg.Caller, value string) any {
+func (shape enumShape) projectShape(_ projectionContext, value string) any {
 	return value
 }
 
@@ -169,8 +167,8 @@ func Any[T any]() Shape[T] { return scalarShape[T]{typ: TypeAny} }
 // MapOf emits a JSON object with arbitrary string keys and shaped values.
 //
 // MapOf preserves the source map keys and projects each value through
-// valueShape for the active caller. Use it for stable map-shaped contracts
-// where every value has the same response shape.
+// valueShape in the active rendering context. Use it for stable map-shaped
+// contracts where every value has the same response shape.
 func MapOf[V any](valueShape Shape[V]) Shape[map[string]V] {
 	if valueShape == nil {
 		panic("httpapi/response: map value shape is required")
@@ -187,15 +185,15 @@ func (shape mapOfShape[V]) describeShape() ShapeSpec {
 	return ShapeSpec{Type: TypeObject, MapValue: &value}
 }
 
-func (shape mapOfShape[V]) projectShape(caller callerpkg.Caller, values map[string]V) any {
+func (shape mapOfShape[V]) projectShape(context projectionContext, values map[string]V) any {
 	projected := make(map[string]any, len(values))
 	for key, value := range values {
-		projected[key] = shape.valueShape.projectShape(caller, value)
+		projected[key] = shape.valueShape.projectShape(context, value)
 	}
 	return projected
 }
 
-// Array emits a JSON array whose items do not need caller-aware projection.
+// Array emits a JSON array whose items do not need context-aware projection.
 //
 // Use Array for primitive or already-public item values. Use ArrayOf when each
 // item has its own response shape or caller-sensitive attributes.
@@ -207,14 +205,15 @@ func (shape arrayShape[T]) describeShape() ShapeSpec {
 	return ShapeSpec{Type: TypeArray, Item: &ShapeSpec{Type: TypeAny}}
 }
 
-func (shape arrayShape[T]) projectShape(_ callerpkg.Caller, values []T) any {
+func (shape arrayShape[T]) projectShape(_ projectionContext, values []T) any {
 	return values
 }
 
 // ArrayOf emits a JSON array and projects each item through itemShape.
 //
 // ArrayOf is the collection equivalent of ObjectShape.Body: each item is
-// projected for the active caller before the final JSON response is encoded.
+// projected in the active rendering context before the final JSON response is
+// encoded.
 func ArrayOf[T any](itemShape Shape[T]) Shape[[]T] {
 	if itemShape == nil {
 		panic("httpapi/response: array item shape is required")
@@ -231,10 +230,10 @@ func (shape arrayOfShape[T]) describeShape() ShapeSpec {
 	return ShapeSpec{Type: TypeArray, Item: &item}
 }
 
-func (shape arrayOfShape[T]) projectShape(caller callerpkg.Caller, values []T) any {
+func (shape arrayOfShape[T]) projectShape(context projectionContext, values []T) any {
 	projected := make([]any, 0, len(values))
 	for _, value := range values {
-		projected = append(projected, shape.itemShape.projectShape(caller, value))
+		projected = append(projected, shape.itemShape.projectShape(context, value))
 	}
 	return projected
 }

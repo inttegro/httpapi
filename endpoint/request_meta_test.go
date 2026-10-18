@@ -72,7 +72,7 @@ func TestEndpointPassesResponseProjectionToHandler(t *testing.T) {
 		Request: projectedLookupRequest(),
 		Respond: func(r *Req, params projectedLookupParams) *response.Res {
 			got = params
-			projection := r.ResponsePropertyProjection()
+			projection := r.ResponseProjection()
 			includesGallery = projection.Includes("product", "media.gallery")
 			includesName = projection.Includes("product", "name")
 			return response.JSON(http.StatusOK, map[string]string{"id": params.ID})
@@ -102,6 +102,84 @@ func TestEndpointPassesResponseProjectionToHandler(t *testing.T) {
 	}
 	if !includesName {
 		t.Fatal("handler projection excludes unmentioned product name")
+	}
+}
+
+func TestEndpointAppliesResponseProjectionBeforeAttributeExtraction(t *testing.T) {
+	var mediaGetterCalls int
+	var galleryGetterCalls int
+
+	mediaShape := response.Object[projectedMediaResponse](
+		response.Required("gallery", response.Array[string](), func(media projectedMediaResponse) []string {
+			galleryGetterCalls++
+			return media.Gallery
+		}),
+	)
+	productShape := response.Object[projectedProductResponse](
+		response.Required("id", response.String(), func(product projectedProductResponse) string {
+			return product.ID
+		}),
+		response.Required("name", response.String(), func(product projectedProductResponse) string {
+			return product.Name
+		}),
+		response.Required("media", mediaShape, func(product projectedProductResponse) projectedMediaResponse {
+			mediaGetterCalls++
+			return product.Media
+		}),
+	)
+	envelope := response.Envelope(response.RequiredField("product", productShape))
+
+	end := DefineJSONEndpoint(JSONEndpointSpec[projectedLookupParams]{
+		Method:  POST,
+		Path:    "/products/lookup",
+		Request: projectedLookupRequest(),
+		Respond: func(_ *Req, params projectedLookupParams) *response.Res {
+			return response.JSON(http.StatusOK, envelope.Body(
+				response.Field("product", projectedProductResponse{
+					ID:   params.ID,
+					Name: "Utility Sneakers",
+					Media: projectedMediaResponse{
+						Gallery: []string{"https://example.com/gallery.jpg"},
+					},
+				}),
+			))
+		},
+		Responses: []ResponseContract{
+			ResponseBody(http.StatusOK, "Product.", envelope),
+		},
+	})
+
+	req := httptest.NewRequest(POST, "/products/lookup", strings.NewReader(`{
+		"id":"prod_123",
+		"request_meta":{"response":{"projection":{
+			"product":{"omit":["media"]}
+		}}}
+	}`))
+	req.Header.Set(contentTypeHeaderKey, ApplicationJson)
+	res := httptest.NewRecorder()
+
+	end.Handler().ServeHTTP(res, req)
+
+	if res.Code != http.StatusOK {
+		t.Fatalf("status = %d body=%s", res.Code, res.Body.String())
+	}
+	if mediaGetterCalls != 0 || galleryGetterCalls != 0 {
+		t.Fatalf(
+			"omitted media getters called: media=%d gallery=%d",
+			mediaGetterCalls,
+			galleryGetterCalls,
+		)
+	}
+	var body map[string]map[string]any
+	if err := json.Unmarshal(res.Body.Bytes(), &body); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	product := body["product"]
+	if product["id"] != "prod_123" || product["name"] != "Utility Sneakers" {
+		t.Fatalf("product = %#v", product)
+	}
+	if _, exists := product["media"]; exists {
+		t.Fatalf("product includes omitted media: %#v", product)
 	}
 }
 

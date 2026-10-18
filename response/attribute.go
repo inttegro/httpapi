@@ -16,7 +16,7 @@ import (
 type AcceptedAttribute[T any] interface {
 	attributeName() string
 	attributeSpec() AttributeSpec
-	projectAttribute(callerpkg.Caller, T) (string, any, bool)
+	projectAttribute(projectionContext, T) (string, any, bool)
 }
 
 // AttributeSpec is the transcribable description of a response object
@@ -133,10 +133,10 @@ func (attribute *Attribute[T, V]) attributeSpec() AttributeSpec {
 }
 
 func (attribute *Attribute[T, V]) projectAttribute(
-	caller callerpkg.Caller,
+	context projectionContext,
 	source T,
 ) (string, any, bool) {
-	if !attribute.availability.Allows(caller) {
+	if !attribute.availability.Allows(context.Caller) || !context.includesAttribute(attribute.name) {
 		return "", nil, false
 	}
 
@@ -144,7 +144,7 @@ func (attribute *Attribute[T, V]) projectAttribute(
 	if !ok {
 		return "", nil, false
 	}
-	return attribute.name, attribute.shape.projectShape(caller, value), true
+	return attribute.name, attribute.shape.projectShape(context.descend(attribute.name), value), true
 }
 
 func cloneCallerSet(set callerpkg.Set) callerpkg.Set {

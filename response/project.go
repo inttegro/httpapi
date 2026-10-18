@@ -1,7 +1,5 @@
 package response
 
-import callerpkg "github.com/zebodotdev/httpapi/caller"
-
 // Project adapts a response shape written for TPrepared so it can render from
 // TSource.
 //
@@ -32,18 +30,18 @@ type ProjectedShape[TSource any, TPrepared any] struct {
 	prepare func(TSource) TPrepared
 }
 
-// ProjectForCaller returns the JSON value visible to caller.
-func (shape *ProjectedShape[TSource, TPrepared]) ProjectForCaller(
+// Project returns the JSON value visible in context.
+func (shape *ProjectedShape[TSource, TPrepared]) Project(
 	value TSource,
-	caller callerpkg.Caller,
+	context Context,
 ) any {
 	if shape == nil {
 		panic("httpapi/response: nil projected shape")
 	}
-	return shape.projectShape(caller, value)
+	return shape.projectShape(newProjectionContext(context), value)
 }
 
-// Body returns a caller-aware body that RenderJSON can project from its target.
+// Body returns a context-aware body that RenderJSON can project from its target.
 func (shape *ProjectedShape[TSource, TPrepared]) Body(value TSource) ShapedBody[TSource] {
 	return Body[TSource](shape, value)
 }
@@ -55,9 +53,12 @@ func (shape *ProjectedShape[TSource, TPrepared]) describeShape() ShapeSpec {
 	return shape.shape.describeShape()
 }
 
-func (shape *ProjectedShape[TSource, TPrepared]) projectShape(caller callerpkg.Caller, value TSource) any {
+func (shape *ProjectedShape[TSource, TPrepared]) projectShape(
+	context projectionContext,
+	value TSource,
+) any {
 	if shape == nil || shape.shape == nil || shape.prepare == nil {
 		panic("httpapi/response: invalid projected shape")
 	}
-	return shape.shape.projectShape(caller, shape.prepare(value))
+	return shape.shape.projectShape(context, shape.prepare(value))
 }

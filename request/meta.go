@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/zebodotdev/httpapi/param"
+	"github.com/zebodotdev/httpapi/response"
 )
 
 const (
@@ -89,10 +90,22 @@ func (r *Req) RequestMeta() Meta {
 	return cloneMeta(r.meta)
 }
 
-// ResponsePropertyProjection returns the property projection requested through
+// ResponseProjection returns the property projection requested through
 // request_meta.response.projection.
-func (r *Req) ResponsePropertyProjection() ResponseProjection {
+func (r *Req) ResponseProjection() ResponseProjection {
 	return r.RequestMeta().ResponseProjection()
+}
+
+// ResponseContext returns the authority and property selection used to render
+// this request's response.
+func (r *Req) ResponseContext() response.Context {
+	if r == nil {
+		return response.Context{}
+	}
+	return response.Context{
+		Caller:     r.ResponseCaller(),
+		Projection: r.ResponseProjection(),
+	}
 }
 
 func (parser *requestMetaParser) decodeEnvelope() {

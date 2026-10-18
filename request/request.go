@@ -711,7 +711,7 @@ func (r *Req) ResponseBody() ([]byte, error) {
 	if r.Res.BodyReader != nil {
 		return nil, fmt.Errorf("httpapi: streamed response body cannot be buffered")
 	}
-	body, err := response.EncodeResponseBodyForCaller(r.Res, r.ResponseCaller())
+	body, err := response.EncodeResponseBody(r.Res, r.ResponseContext())
 	if err != nil {
 		logr.Printf(
 			"failed to encode response as json:"+

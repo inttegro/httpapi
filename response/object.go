@@ -1,10 +1,6 @@
 package response
 
-import (
-	"fmt"
-
-	callerpkg "github.com/zebodotdev/httpapi/caller"
-)
+import "fmt"
 
 // ObjectShape defines a JSON object response shape for values of type T.
 //
@@ -43,12 +39,19 @@ func (shape *ObjectShape[T]) Attribute(attribute AcceptedAttribute[T]) *ObjectSh
 	return shape
 }
 
-// ProjectForCaller returns the JSON object visible to caller.
+// Project returns the JSON object visible in context.
 //
 // It is primarily useful for tests, manual projection, and spec tooling. Normal
 // endpoint handlers should prefer response.Body or ObjectShape.Body and let
 // RenderJSON derive the caller from the request target.
-func (shape *ObjectShape[T]) ProjectForCaller(value T, caller callerpkg.Caller) map[string]any {
+func (shape *ObjectShape[T]) Project(value T, context Context) map[string]any {
+	return shape.project(value, newProjectionContext(context))
+}
+
+func (shape *ObjectShape[T]) project(
+	value T,
+	context projectionContext,
+) map[string]any {
 	if shape == nil {
 		panic("httpapi/response: nil object shape")
 	}
@@ -56,7 +59,7 @@ func (shape *ObjectShape[T]) ProjectForCaller(value T, caller callerpkg.Caller) 
 
 	object := make(map[string]any, len(shape.attributes))
 	for _, attribute := range shape.attributes {
-		name, projected, ok := attribute.projectAttribute(caller, value)
+		name, projected, ok := attribute.projectAttribute(context, value)
 		if ok {
 			object[name] = projected
 		}
@@ -82,7 +85,7 @@ func (shape *ObjectShape[T]) Attributes() []AttributeSpec {
 	return attributes
 }
 
-// Body returns a caller-aware body that RenderJSON can project from its target.
+// Body returns a context-aware body that RenderJSON can project from its target.
 //
 // This method is equivalent to response.Body(shape, value). It is convenient
 // when reading from left to right: response.JSON(status, taskShape.Body(task)).
@@ -94,8 +97,8 @@ func (shape *ObjectShape[T]) describeShape() ShapeSpec {
 	return ShapeSpec{Type: TypeObject, Attributes: shape.Attributes()}
 }
 
-func (shape *ObjectShape[T]) projectShape(caller callerpkg.Caller, value T) any {
-	return shape.ProjectForCaller(value, caller)
+func (shape *ObjectShape[T]) projectShape(context projectionContext, value T) any {
+	return shape.project(value, context)
 }
 
 func (shape *ObjectShape[T]) validateAttributes() {
@@ -109,12 +112,12 @@ func (shape *ObjectShape[T]) validateAttributes() {
 	}
 }
 
-// Body returns a caller-aware body that render and write helpers can project
+// Body returns a context-aware body that render and write helpers can project
 // before JSON encoding.
 //
 // Use Body when the response value should be filtered through a Shape. If the
-// render target exposes RequestCaller, the active caller is used automatically;
-// otherwise the body is projected as though the caller is undefined.
+// render target exposes ResponseContext, its authority and property selection
+// are used automatically; otherwise the zero rendering context is used.
 func Body[T any](shape Shape[T], value T) ShapedBody[T] {
 	if shape == nil {
 		panic("httpapi/response: body shape is required")
@@ -125,24 +128,23 @@ func Body[T any](shape Shape[T], value T) ShapedBody[T] {
 	}
 }
 
-// ShapedBody is a caller-aware response body returned by Body.
+// ShapedBody is a context-aware response body returned by Body.
 //
 // ShapedBody is safe to store in Res.Body. It delays projection until render or
 // encode time, which lets the same response value be written differently for
-// different callers.
+// different authorities and property selections.
 type ShapedBody[T any] struct {
 	shape Shape[T]
 	value T
 }
 
-// ProjectResponse returns this body projected for caller.
+// Project returns this body projected in context.
 //
-// ProjectResponse is the low-level escape hatch used by Render and
-// EncodeResponseBodyForCaller. Endpoint handlers normally do not call it
-// directly.
-func (body ShapedBody[T]) ProjectResponse(caller callerpkg.Caller) any {
+// Project is the low-level escape hatch used by Render and EncodeResponseBody.
+// Endpoint handlers normally do not call it directly.
+func (body ShapedBody[T]) Project(context Context) any {
 	if body.shape == nil {
 		panic("httpapi/response: nil body shape")
 	}
-	return body.shape.projectShape(caller, body.value)
+	return body.shape.projectShape(newProjectionContext(context), body.value)
 }

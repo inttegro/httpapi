@@ -1,4 +1,4 @@
-// Package response owns response objects, render helpers, caller-aware response
+// Package response owns response objects, render helpers, context-aware response
 // shapes, body encoding, and HTTP response writing for httpapi endpoint
 // runtimes.
 //
@@ -15,8 +15,8 @@
 // shape explicitly lists which JSON attributes are emitted, their value types,
 // and whether particular attributes are visible only to selected caller.Caller
 // values. When a shaped body is rendered through a request target, response
-// derives the caller from the target and omits attributes unavailable to that
-// caller.
+// reads the target's rendering context and omits attributes unavailable to its
+// authority or property selection.
 //
 // The same caller model is shared by endpoints, request parameters, and response
 // attributes. This keeps authorization-sensitive request and response contracts

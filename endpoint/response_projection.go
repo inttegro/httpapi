@@ -63,13 +63,13 @@ func (e Endpoint) validateResponseProjection(r *Req) *param.Error {
 	if r == nil {
 		return nil
 	}
-	projection := r.ResponsePropertyProjection()
+	projection := r.ResponseProjection()
 	// The common path does not touch sync.Once or compile any schema. This keeps
 	// projection support effectively free for callers that accept full responses.
 	if !projection.Defined() {
 		return nil
 	}
-	return e.projectionIndex.projectionSchema().ValidateForCaller(
+	return e.projectionIndex.projectionSchema().Validate(
 		projection,
 		r.ResponseCaller(),
 	)

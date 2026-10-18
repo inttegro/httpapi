@@ -12,8 +12,6 @@ import (
 	"os"
 	"strings"
 	"time"
-
-	callerpkg "github.com/zebodotdev/httpapi/caller"
 )
 
 const (
@@ -43,8 +41,10 @@ type WriteOptions struct {
 	// RequestID is written as x-request-id.
 	RequestID string
 
-	// Caller is used to project caller-aware response bodies before encoding.
-	Caller callerpkg.Caller
+	// Context controls caller visibility and property selection while typed
+	// response shapes are being built. Omitted attribute getters are not
+	// evaluated.
+	Context Context
 
 	// Duration is written as x-request-timing.
 	Duration time.Duration
@@ -88,7 +88,7 @@ func WriteResponse(
 		return WriteResponseStream(w, res, opts)
 	}
 
-	body, err := EncodeResponseBodyForCaller(res, opts.Caller)
+	body, err := EncodeResponseBody(res, opts.Context)
 	if err != nil {
 		return WriteResult{}, err
 	}
@@ -96,23 +96,13 @@ func WriteResponse(
 	return WriteResponseBody(w, res, body, opts)
 }
 
-// EncodeResponseBody encodes a non-streaming response body.
+// EncodeResponseBody encodes a non-streaming response after applying its
+// rendering context.
 //
-// JSON responses are encoded with encoding/json. TextHTML and TextPlain
-// responses use the string body directly when possible. Caller-aware bodies are
-// projected with an undefined caller; use EncodeResponseBodyForCaller when
-// availability matters.
-func EncodeResponseBody(res *Res) ([]byte, error) {
-	return EncodeResponseBodyForCaller(res, callerpkg.Caller{})
-}
-
-// EncodeResponseBodyForCaller encodes a non-streaming response body after
-// projecting caller-aware bodies for caller.
-//
-// This function is used by endpoint response writing and idempotency capture so
-// replay storage records the same caller-visible body that was sent to the
-// client.
-func EncodeResponseBodyForCaller(res *Res, caller callerpkg.Caller) ([]byte, error) {
+// Projection occurs while typed shapes extract their attributes. The encoder
+// therefore never receives a complete response object that must subsequently
+// be pruned.
+func EncodeResponseBody(res *Res, context Context) ([]byte, error) {
 	if res == nil {
 		return nil, fmt.Errorf("httpapi: response is required")
 	}
@@ -120,7 +110,7 @@ func EncodeResponseBodyForCaller(res *Res, caller callerpkg.Caller) ([]byte, err
 		return nil, fmt.Errorf("httpapi: streamed response body cannot be buffered")
 	}
 	body := res.Body
-	if projected, ok := projectResponseBody(body, caller); ok {
+	if projected, ok := projectResponseBody(body, context); ok {
 		body = projected
 	}
 	if body == nil {

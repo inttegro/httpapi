@@ -67,7 +67,7 @@ func BenchmarkResponseProjectionValidation(b *testing.B) {
 			b.ReportAllocs()
 			b.ResetTimer()
 			for b.Loop() {
-				benchmarkProjectionError = schema.ValidateForCaller(
+				benchmarkProjectionError = schema.Validate(
 					projection,
 					projectionPublicCaller,
 				)

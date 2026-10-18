@@ -99,7 +99,7 @@ func TestEncodeResponseBodyEncodesText(t *testing.T) {
 	body, err := EncodeResponseBody(&Res{
 		ContentType: TextPlain,
 		Body:        "hello",
-	})
+	}, Context{})
 
 	if err != nil {
 		t.Fatalf("EncodeResponseBody error = %v", err)
@@ -113,7 +113,7 @@ func TestEncodeResponseBodyEncodesJSON(t *testing.T) {
 	body, err := EncodeResponseBody(&Res{
 		ContentType: ApplicationJson,
 		Body:        map[string]string{"ok": "true"},
-	})
+	}, Context{})
 
 	if err != nil {
 		t.Fatalf("EncodeResponseBody error = %v", err)
@@ -124,7 +124,7 @@ func TestEncodeResponseBodyEncodesJSON(t *testing.T) {
 }
 
 func TestEncodeResponseBodyReturnsRawBytes(t *testing.T) {
-	body, err := EncodeResponseBody(Bytes(http.StatusOK, "image/png", []byte{1, 2, 3}))
+	body, err := EncodeResponseBody(Bytes(http.StatusOK, "image/png", []byte{1, 2, 3}), Context{})
 
 	if err != nil {
 		t.Fatalf("EncodeResponseBody error = %v", err)
@@ -135,7 +135,7 @@ func TestEncodeResponseBodyReturnsRawBytes(t *testing.T) {
 }
 
 func TestEncodeResponseBodyKeepsJSONSemanticsForByteSlices(t *testing.T) {
-	body, err := EncodeResponseBody(JSON(http.StatusOK, []byte("hello")))
+	body, err := EncodeResponseBody(JSON(http.StatusOK, []byte("hello")), Context{})
 
 	if err != nil {
 		t.Fatalf("EncodeResponseBody error = %v", err)
@@ -146,7 +146,7 @@ func TestEncodeResponseBodyKeepsJSONSemanticsForByteSlices(t *testing.T) {
 }
 
 func TestEncodeResponseBodyWritesRawJSONMessage(t *testing.T) {
-	body, err := EncodeResponseBody(JSON(http.StatusOK, json.RawMessage(`{"ok":true}`)))
+	body, err := EncodeResponseBody(JSON(http.StatusOK, json.RawMessage(`{"ok":true}`)), Context{})
 
 	if err != nil {
 		t.Fatalf("EncodeResponseBody error = %v", err)

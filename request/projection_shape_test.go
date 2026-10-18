@@ -66,8 +66,8 @@ func TestDeriveResponseProjectionSchemaIndexesNestedTypedShapes(t *testing.T) {
 		"product": mustPickProperties(t, "id", "media.gallery"),
 		"media":   mustOmitProperties(t, "gallery"),
 	})
-	if err := schema.ValidateForCaller(projection, projectionPublicCaller); err != nil {
-		t.Fatalf("ValidateForCaller error = %v", err)
+	if err := schema.Validate(projection, projectionPublicCaller); err != nil {
+		t.Fatalf("Validate error = %v", err)
 	}
 }
 
@@ -96,11 +96,11 @@ func TestDerivedResponseProjectionSchemaHonorsCallerAvailability(t *testing.T) {
 		"product": mustPickProperties(t, "internal_note"),
 	})
 
-	publicErr := schema.ValidateForCaller(projection, projectionPublicCaller)
+	publicErr := schema.Validate(projection, projectionPublicCaller)
 	if publicErr == nil || publicErr.Code != param.CodeInvalidResponseProjection {
 		t.Fatalf("public error = %#v", publicErr)
 	}
-	if err := schema.ValidateForCaller(projection, projectionWorkerCaller); err != nil {
+	if err := schema.Validate(projection, projectionWorkerCaller); err != nil {
 		t.Fatalf("worker error = %v", err)
 	}
 }
@@ -125,7 +125,7 @@ func TestDerivedResponseProjectionSchemaRejectsUnknownResource(t *testing.T) {
 		"products": mustPickProperties(t, "id"),
 	})
 
-	err := schema.ValidateForCaller(projection, projectionPublicCaller)
+	err := schema.Validate(projection, projectionPublicCaller)
 	if err == nil || err.Code != param.CodeInvalidResponseProjection {
 		t.Fatalf("error = %#v", err)
 	}
@@ -160,8 +160,8 @@ func TestDerivedResponseProjectionSchemaTraversesArrayAndMapValues(t *testing.T)
 		"countries": mustPickProperties(t, "id"),
 	})
 
-	if err := schema.ValidateForCaller(projection, projectionPublicCaller); err != nil {
-		t.Fatalf("ValidateForCaller error = %v", err)
+	if err := schema.Validate(projection, projectionPublicCaller); err != nil {
+		t.Fatalf("Validate error = %v", err)
 	}
 }
 

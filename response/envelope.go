@@ -127,12 +127,19 @@ func (rule *exactOneRule) append() {
 	})
 }
 
-// ProjectForCaller returns the JSON envelope visible to caller.
+// Project returns the JSON envelope visible in context.
 //
 // An envelope response must emit at least one non-nil field for the active
 // caller. Optional nil fields are omitted; required nil fields panic. Every
-// exact-one rule is evaluated independently after caller-aware projection.
-func (shape *EnvelopeShape) ProjectForCaller(values EnvelopeValues, caller callerpkg.Caller) map[string]any {
+// exact-one rule is evaluated independently after context-aware projection.
+func (shape *EnvelopeShape) Project(values EnvelopeValues, context Context) map[string]any {
+	return shape.project(values, newProjectionContext(context))
+}
+
+func (shape *EnvelopeShape) project(
+	values EnvelopeValues,
+	context projectionContext,
+) map[string]any {
 	if shape == nil {
 		panic("httpapi/response: nil envelope shape")
 	}
@@ -141,7 +148,7 @@ func (shape *EnvelopeShape) ProjectForCaller(values EnvelopeValues, caller calle
 
 	object := make(map[string]any, len(shape.attributes))
 	for _, attribute := range shape.attributes {
-		name, projected, ok := attribute.projectEnvelopeAttribute(caller, values)
+		name, projected, ok := attribute.projectEnvelopeAttribute(context, values)
 		if ok {
 			object[name] = projected
 		}
@@ -181,7 +188,7 @@ func (shape *EnvelopeShape) Attributes() []AttributeSpec {
 	return attributes
 }
 
-// Body returns a caller-aware body from named field values.
+// Body returns a context-aware body from named field values.
 //
 // Body is the usual handler-facing entrypoint:
 //
@@ -192,7 +199,7 @@ func (shape *EnvelopeShape) Body(fields ...EnvelopeField) ShapedBody[EnvelopeVal
 	return shape.BodyValues(Fields(fields...))
 }
 
-// BodyValues returns a caller-aware body from a prebuilt field collection.
+// BodyValues returns a context-aware body from a prebuilt field collection.
 //
 // Prefer Body for simple endpoint responses. BodyValues is useful when a helper
 // has already assembled an EnvelopeValues value.
@@ -215,8 +222,8 @@ func (shape *EnvelopeShape) describeShape() ShapeSpec {
 	return spec
 }
 
-func (shape *EnvelopeShape) projectShape(caller callerpkg.Caller, values EnvelopeValues) any {
-	return shape.ProjectForCaller(values, caller)
+func (shape *EnvelopeShape) projectShape(context projectionContext, values EnvelopeValues) any {
+	return shape.project(values, context)
 }
 
 func (shape *EnvelopeShape) validateAttributes() {
@@ -268,7 +275,7 @@ type AcceptedEnvelopeAttribute interface {
 	attributeName() string
 	attributeType() reflect.Type
 	attributeSpec() AttributeSpec
-	projectEnvelopeAttribute(callerpkg.Caller, EnvelopeValues) (string, any, bool)
+	projectEnvelopeAttribute(projectionContext, EnvelopeValues) (string, any, bool)
 }
 
 // EnvelopeAttribute describes one top-level envelope attribute.
@@ -337,10 +344,10 @@ func (attribute *EnvelopeAttribute[T]) attributeSpec() AttributeSpec {
 }
 
 func (attribute *EnvelopeAttribute[T]) projectEnvelopeAttribute(
-	caller callerpkg.Caller,
+	context projectionContext,
 	values EnvelopeValues,
 ) (string, any, bool) {
-	if !attribute.availability.Allows(caller) {
+	if !attribute.availability.Allows(context.Caller) || !context.includesAttribute(attribute.name) {
 		return "", nil, false
 	}
 
@@ -363,7 +370,7 @@ func (attribute *EnvelopeAttribute[T]) projectEnvelopeAttribute(
 		panic(fmt.Sprintf("httpapi/response: envelope field %q has type %T, want %T", attribute.name, value, *new(T)))
 	}
 
-	return attribute.name, attribute.shape.projectShape(caller, typed), true
+	return attribute.name, attribute.shape.projectShape(context.descend(attribute.name), typed), true
 }
 
 func envelopeTypeOf[T any]() reflect.Type {
