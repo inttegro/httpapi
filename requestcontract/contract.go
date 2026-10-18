@@ -99,6 +99,7 @@ type shapeFingerprint struct {
 	Rules         []param.RuleSpec          `json:"rules,omitempty"`
 	Discriminator *discriminatorFingerprint `json:"discriminator,omitempty"`
 	Item          *shapeFingerprint         `json:"item,omitempty"`
+	MapValue      *shapeFingerprint         `json:"map_value,omitempty"`
 }
 
 type parameterFingerprint struct {
@@ -136,7 +137,7 @@ func fingerprintRequestContract(end endpoint.Endpoint) requestContractFingerprin
 		accepted = append(accepted, string(contentType))
 	}
 	return requestContractFingerprint{
-		Version:      2,
+		Version:      3,
 		ContentTypes: accepted,
 		Required:     contract.Required,
 		Body:         fingerprintShape(contract.Body),
@@ -161,6 +162,10 @@ func fingerprintShape(shape param.ShapeSpec) shapeFingerprint {
 	if shape.Item != nil {
 		item := fingerprintShape(*shape.Item)
 		fingerprint.Item = &item
+	}
+	if shape.MapValue != nil {
+		value := fingerprintShape(*shape.MapValue)
+		fingerprint.MapValue = &value
 	}
 	return fingerprint
 }

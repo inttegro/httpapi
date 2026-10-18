@@ -317,6 +317,28 @@ func TestFromResponseShapeIncludesMapAdditionalProperties(t *testing.T) {
 	}
 }
 
+func TestFromParamShapeIncludesMapAdditionalProperties(t *testing.T) {
+	got := FromParamShape(param.ShapeSpec{
+		Type: param.TypeObject,
+		MapValue: &param.ShapeSpec{
+			Type: param.TypeArray,
+			Item: &param.ShapeSpec{Type: param.TypeString},
+		},
+	})
+
+	if got.Type != "object" || got.AdditionalProperties == nil {
+		t.Fatalf("map schema = %#v", got)
+	}
+	if got.Properties != nil || got.Required != nil {
+		t.Fatalf("map schema has fixed properties: %#v", got)
+	}
+	if got.AdditionalProperties.Type != "array" ||
+		got.AdditionalProperties.Items == nil ||
+		got.AdditionalProperties.Items.Type != "string" {
+		t.Fatalf("map value schema = %#v", got.AdditionalProperties)
+	}
+}
+
 func TestFromResponseShapeIncludesIndependentExactOneRules(t *testing.T) {
 	shape := response.Envelope(
 		response.OptionalField("order", response.Any[map[string]any]()),

@@ -23,6 +23,10 @@ type ShapeSpec struct {
 	// Parameters describes object parameters when Type is TypeObject.
 	Parameters []ParameterSpec
 
+	// MapValue describes values for arbitrary object properties when Type is
+	// TypeObject. It is mutually exclusive with Parameters.
+	MapValue *ShapeSpec
+
 	// Rules describes object-level presence rules when Type is TypeObject.
 	Rules []RuleSpec
 

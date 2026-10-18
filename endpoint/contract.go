@@ -128,6 +128,7 @@ func cloneParamShapeSpec(spec parampkg.ShapeSpec) parampkg.ShapeSpec {
 		Enum:          cloneStringSlice(spec.Enum),
 		Discriminator: cloneParamDiscriminatorSpec(spec.Discriminator),
 		Item:          cloneParamShapeSpecPointer(spec.Item),
+		MapValue:      cloneParamShapeSpecPointer(spec.MapValue),
 	}
 	if len(spec.Parameters) > 0 {
 		cloned.Parameters = make([]parampkg.ParameterSpec, 0, len(spec.Parameters))

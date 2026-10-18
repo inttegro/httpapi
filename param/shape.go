@@ -192,6 +192,53 @@ func (shape arrayOfShape[T]) wireType() Type {
 	return TypeArray
 }
 
+// MapOf accepts JSON objects with arbitrary property names and parses every
+// property value with valueShape.
+//
+// Use Object when the accepted property names are known in advance. MapOf is
+// intended for keyed collections whose keys are part of the request data, such
+// as named response projections.
+func MapOf[T any](valueShape Shape[T]) Shape[map[string]T] {
+	if valueShape == nil {
+		panic("httpapi/param: map value shape is required")
+	}
+	return mapOfShape[T]{valueShape: valueShape}
+}
+
+type mapOfShape[T any] struct {
+	valueShape Shape[T]
+}
+
+func (shape mapOfShape[T]) parseShape(
+	ctx parseContext,
+	path string,
+	raw any,
+) (map[string]T, *Error) {
+	object, ok := raw.(map[string]any)
+	if !ok {
+		return nil, typeMismatch(path, TypeObject)
+	}
+
+	result := make(map[string]T, len(object))
+	for name, item := range object {
+		value, err := shape.valueShape.parseShape(ctx, joinPath(path, name), item)
+		if err != nil {
+			return nil, err
+		}
+		result[name] = value
+	}
+	return result, nil
+}
+
+func (shape mapOfShape[T]) describeShape() ShapeSpec {
+	value := shape.valueShape.describeShape()
+	return ShapeSpec{Type: TypeObject, MapValue: &value}
+}
+
+func (shape mapOfShape[T]) wireType() Type {
+	return TypeObject
+}
+
 func typeMismatch(path string, typ Type) *Error {
 	return paramError(
 		path,

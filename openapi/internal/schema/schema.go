@@ -17,7 +17,9 @@ func FromParamShape(shape parampkg.ShapeSpec) spec.Schema {
 	}
 	switch shape.Type {
 	case parampkg.TypeObject:
-		if shape.Discriminator != nil {
+		if shape.MapValue != nil {
+			schema.AdditionalProperties = paramMapValueSchema(shape.MapValue)
+		} else if shape.Discriminator != nil {
 			schema.OneOf = discriminatorOneOf(shape.Discriminator, FromParamShape)
 			schema.Discriminator = &spec.Discriminator{
 				PropertyName: shape.Discriminator.Parameter,
@@ -47,7 +49,12 @@ func FromParamShapeSwagger2(shape parampkg.ShapeSpec) spec.Schema {
 	}
 	switch shape.Type {
 	case parampkg.TypeObject:
-		if shape.Discriminator != nil {
+		if shape.MapValue != nil {
+			schema.AdditionalProperties = paramMapValueSchemaWith(
+				shape.MapValue,
+				FromParamShapeSwagger2,
+			)
+		} else if shape.Discriminator != nil {
 			schema.Properties = discriminatorSwaggerProperties(shape.Discriminator)
 			schema.Required = []string{shape.Discriminator.Parameter}
 		} else {
@@ -319,6 +326,21 @@ func paramItemSchemaWith(
 	}
 	schema := convert(*shape)
 	return &schema
+}
+
+func paramMapValueSchema(shape *parampkg.ShapeSpec) *spec.Schema {
+	return paramMapValueSchemaWith(shape, FromParamShape)
+}
+
+func paramMapValueSchemaWith(
+	shape *parampkg.ShapeSpec,
+	convert func(parampkg.ShapeSpec) spec.Schema,
+) *spec.Schema {
+	if shape == nil {
+		return nil
+	}
+	converted := convert(*shape)
+	return &converted
 }
 
 func discriminatorOneOf(
