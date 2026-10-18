@@ -150,6 +150,17 @@ func TestTranscribeUsesEndpointRequestAndResponseContracts(t *testing.T) {
 	if requestSchema.Properties["order_id"].Type != "string" {
 		t.Fatalf("order_id schema = %#v", requestSchema.Properties["order_id"])
 	}
+	requestMeta := requestSchema.Properties["request_meta"]
+	projection := requestMeta.Properties["response"].Properties["projection"]
+	if projection.AdditionalProperties == nil {
+		t.Fatalf("request_meta response projection = %#v", projection)
+	}
+	selector := projection.AdditionalProperties
+	if selector.Properties["pick"].Items == nil ||
+		selector.Properties["pick"].Items.Type != "string" ||
+		len(selector.AllOf) == 0 {
+		t.Fatalf("projection selector = %#v", selector)
+	}
 	if len(requestSchema.Required) != 1 || requestSchema.Required[0] != "order_id" {
 		t.Fatalf("request required = %#v", requestSchema.Required)
 	}

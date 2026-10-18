@@ -271,8 +271,8 @@ func TestDefineEndpointStoresContractMetadata(t *testing.T) {
 	if gotRequest.Body.Type != param.TypeObject {
 		t.Fatalf("request body type = %q, want object", gotRequest.Body.Type)
 	}
-	if len(gotRequest.Body.Parameters) != 2 {
-		t.Fatalf("request parameters = %d, want 2", len(gotRequest.Body.Parameters))
+	if len(gotRequest.Body.Parameters) != 3 {
+		t.Fatalf("request parameters = %d, want 3", len(gotRequest.Body.Parameters))
 	}
 	if gotRequest.Body.Parameters[0].Name != "order_id" {
 		t.Fatalf("first request parameter = %q", gotRequest.Body.Parameters[0].Name)
@@ -281,6 +281,18 @@ func TestDefineEndpointStoresContractMetadata(t *testing.T) {
 		gotRequest.Body.Parameters[1].Shape.Item == nil ||
 		gotRequest.Body.Parameters[1].Shape.Item.Type != param.TypeString {
 		t.Fatalf("tags parameter shape = %#v", gotRequest.Body.Parameters[1].Shape)
+	}
+	requestMeta := gotRequest.Body.Parameters[2]
+	if requestMeta.Name != "request_meta" || requestMeta.Shape.Type != param.TypeObject {
+		t.Fatalf("request_meta parameter = %#v", requestMeta)
+	}
+	responseMeta := requestMeta.Shape.Parameters[0]
+	if responseMeta.Name != "response" || responseMeta.Shape.Parameters[0].Name != "projection" {
+		t.Fatalf("response metadata = %#v", responseMeta)
+	}
+	projection := responseMeta.Shape.Parameters[0].Shape
+	if projection.MapValue == nil || projection.MapValue.Type != param.TypeObject {
+		t.Fatalf("projection shape = %#v", projection)
 	}
 
 	gotResponses := endpoint.ResponseContracts()

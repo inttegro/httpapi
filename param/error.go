@@ -56,6 +56,11 @@ const (
 
 	// CodeInvalid reports that a parser rejected a value as invalid.
 	CodeInvalid ErrorCode = "invalid_request_parameter"
+
+	// CodeInvalidResponseProjection reports that a syntactically valid
+	// response projection names a resource or property outside the endpoint's
+	// declared public response projection schema.
+	CodeInvalidResponseProjection ErrorCode = "invalid_response_projection"
 )
 
 // Error describes one request-parameter failure.

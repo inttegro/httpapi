@@ -1,7 +1,6 @@
 package endpoint
 
 import (
-	"bytes"
 	"context"
 	"crypto/rand"
 	"crypto/sha256"
@@ -28,16 +27,10 @@ const (
 	idempotencyRetention      = 24 * time.Hour
 )
 
-// RequestMeta is the audit envelope metadata captured for idempotent requests.
-type RequestMeta struct {
-	// IdempotencyKey is the request idempotency key recorded with the audit
-	// envelope.
-	IdempotencyKey string `json:"idempotency_key,omitzero"`
-}
-
-type idempotencyEnvelope struct {
-	RequestMeta *RequestMeta `json:"request_meta,omitempty"`
-}
+// RequestMeta is the standard request metadata envelope recognized by the
+// endpoint runtime. It remains an endpoint alias for compatibility; new code
+// may use request.Meta directly.
+type RequestMeta = requestpkg.Meta
 
 type idempotencyRequest struct {
 	Scope       string
@@ -225,19 +218,6 @@ func handleIdempotently(
 		return
 	}
 
-	sanitizedBody, err := requestBodyWithoutMeta(r.Body)
-	if err != nil {
-		logr.Printf(
-			"idempotency request body normalization failed:"+
-				" request_id=%s error=%v",
-			r.ID,
-			err,
-		)
-		responsepkg.RenderParamErr(r, e.InvalidBodyErr())
-		return
-	}
-	r.Body = sanitizedBody
-
 	store := currentIdempotencyStore()
 	now := time.Now().UTC()
 	record := &IdempotencyRecord{
@@ -367,8 +347,14 @@ func idempotencyKeyFromRequest(r *Req) (string, *e.ErrInvalidParam) {
 	if perr != nil {
 		return "", perr
 	}
+	if perr := rejectTopLevelIdempotencyKey(r.Body); perr != nil {
+		return "", perr
+	}
 
-	metaKey, perr := idempotencyKeyFromBody(r.Body)
+	metaKey, perr := normalizeIdempotencyKey(
+		r.RequestMeta().IdempotencyKey,
+		"request_meta.idempotency_key",
+	)
 	if perr != nil {
 		return "", perr
 	}
@@ -380,6 +366,20 @@ func idempotencyKeyFromRequest(r *Req) (string, *e.ErrInvalidParam) {
 		return headerKey, nil
 	}
 	return metaKey, nil
+}
+
+func rejectTopLevelIdempotencyKey(body []byte) *e.ErrInvalidParam {
+	if len(strings.TrimSpace(string(body))) == 0 {
+		return nil
+	}
+	var raw map[string]json.RawMessage
+	if err := json.Unmarshal(body, &raw); err != nil {
+		return e.InvalidBodyErr()
+	}
+	if _, ok := raw["idempotency_key"]; ok {
+		return unsupportedIdempotencyKeyErr("idempotency_key")
+	}
+	return nil
 }
 
 func idempotencyKeyFromSession(r *Req) (string, *e.ErrInvalidParam) {
@@ -422,31 +422,6 @@ func idempotencyKeyFromHeader(r *Req) (string, *e.ErrInvalidParam) {
 	}
 
 	return normalizeIdempotencyKey(key, "Idempotency-Key")
-}
-
-func idempotencyKeyFromBody(body []byte) (string, *e.ErrInvalidParam) {
-	if len(strings.TrimSpace(string(body))) == 0 {
-		return "", nil
-	}
-
-	var raw map[string]json.RawMessage
-	if err := json.Unmarshal(body, &raw); err != nil {
-		return "", e.InvalidBodyErr()
-	}
-	if _, ok := raw["idempotency_key"]; ok {
-		return "", unsupportedIdempotencyKeyErr("idempotency_key")
-	}
-
-	var env idempotencyEnvelope
-	if err := json.Unmarshal(body, &env); err != nil {
-		return "", e.InvalidBodyErr()
-	}
-
-	if env.RequestMeta != nil {
-		return normalizeIdempotencyKey(env.RequestMeta.IdempotencyKey, "request_meta.idempotency_key")
-	}
-
-	return "", nil
 }
 
 func normalizeIdempotencyKey(raw, param string) (string, *e.ErrInvalidParam) {
@@ -499,23 +474,6 @@ func canonicalOperationFingerprint(body []byte) (string, *e.ErrInvalidParam) {
 
 	sum := sha256.Sum256(canon)
 	return hex.EncodeToString(sum[:]), nil
-}
-
-func requestBodyWithoutMeta(body []byte) ([]byte, error) {
-	if len(bytes.TrimSpace(body)) == 0 {
-		return body, nil
-	}
-
-	var payload map[string]json.RawMessage
-	if err := json.Unmarshal(body, &payload); err != nil {
-		return nil, err
-	}
-	if _, ok := payload["request_meta"]; !ok {
-		return body, nil
-	}
-
-	delete(payload, "request_meta")
-	return json.Marshal(payload)
 }
 
 func replayOrRejectIdempotentRequest(r *Req, existing *IdempotencyRecord, incoming *idempotencyRequest) {

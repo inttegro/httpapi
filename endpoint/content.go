@@ -170,3 +170,13 @@ func ValidateContentType(actual ContentType, expected []ContentType) error {
 
 	return fmt.Errorf("httpapi: content type %q does not match any of %q", actual, JoinContentTypes(expected))
 }
+
+func requestAcceptsMeta(actual ContentType, accepted []ContentType) bool {
+	if strings.TrimSpace(string(actual)) == "" {
+		return PrimaryContentType(accepted) == ApplicationJson
+	}
+	return strings.Contains(
+		strings.ToLower(string(actual)),
+		string(ApplicationJson),
+	)
+}

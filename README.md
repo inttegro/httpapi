@@ -236,6 +236,74 @@ Restricted params deliberately fail as unexpected parameters when sent by a
 caller that cannot use them. That avoids revealing that a hidden parameter
 exists or which caller is allowed to send it.
 
+## Response Projections
+
+JSON endpoints accept response computation preferences in the standard
+`request_meta.response.projection` envelope. Each key names a response resource;
+its value may either `pick` or `omit` an unordered, duplicate-free set of dot
+separated property paths:
+
+```json
+{
+	"id": "sale_123",
+	"request_meta": {
+		"response": {
+			"projection": {
+				"product": {
+					"omit": ["media.gallery"]
+				},
+				"merchant": {
+					"pick": ["app_id", "name", "branding", "support"]
+				}
+			}
+		}
+	}
+}
+```
+
+`pick` and `omit` are mutually exclusive within one resource. A resource not
+mentioned in the projection retains its complete public representation. Picking
+a parent selects its subtree; picking a descendant keeps the ancestors needed
+to contain it. Omitting a parent omits its subtree.
+
+The endpoint runtime validates and removes `request_meta` before the
+endpoint-specific `param.Request` runs. Handlers receive the parsed preference
+on `request.Req`, which lets them skip optional reads and enrichment instead of
+building data that serialization will discard:
+
+```go
+projection := r.ResponsePropertyProjection()
+if projection.Includes("product", "media.gallery") {
+	product.Media.Gallery = loadGallery(product.ID)
+}
+```
+
+The shared runtime validates the envelope, mutual exclusion, path syntax, and
+set invariants. It then derives each endpoint's valid resources and property
+paths from its successful typed response contracts and validates the projection
+before invoking the handler. There is no separate projection schema to declare
+or keep synchronized with OpenAPI. The derived index is compiled lazily on the
+first projected request into shared-prefix nodes and flat, sorted edge arrays;
+ordinary requests incur neither compilation nor projection-index storage:
+
+```go
+func lookup(r *request.Req) {
+	// The runtime has already validated this against the endpoint's response
+	// shapes, including caller-specific attribute availability.
+	projection := r.ResponsePropertyProjection()
+	if projection.Includes("product", "media.gallery") {
+		// Load optional gallery data only when the caller requested it.
+	}
+}
+```
+
+Unknown resources and properties return the stable
+`invalid_response_projection` code with the exact selector path. Declaring a
+nested response attribute makes its ancestors projectable, but an open-ended
+`Any` value does not implicitly make unknown descendants projectable. The same
+response shapes remain the source for response serialization, projection
+validation, and OpenAPI transcription.
+
 ## Cost Usage
 
 Use `cost` to observe metered usage for a request, job, workflow, activity, or

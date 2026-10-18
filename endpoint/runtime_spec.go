@@ -129,12 +129,19 @@ func endpointFromSpec(spec EndpointSpec) Endpoint {
 	if spec.Idempotency.ScopeResolver != nil {
 		idempotent = true
 	}
+	acceptedContentTypes := normalizeEndpointContentTypes(spec.Accepts, spec.AcceptsAny...)
+	requestContract := normalizeRequestContract(spec.Request)
+	if validateEndpointContentType(ApplicationJson, acceptedContentTypes) == nil {
+		requestContract.Body = withStandardRequestMeta(requestContract.Body, idempotent)
+	}
+
+	responseContracts := normalizeResponseContracts(spec.Responses)
 
 	return Endpoint{
 		method:     normalizeEndpointMethod(spec.Method),
 		pattern:    spec.Path,
 		aliases:    normalizeAliasSpecs(spec.Aliases),
-		accepts:    normalizeEndpointContentTypes(spec.Accepts, spec.AcceptsAny...),
+		accepts:    acceptedContentTypes,
 		rawHandler: handler,
 		idempotent: idempotent,
 		resolver:   spec.Idempotency.ScopeResolver,
@@ -160,8 +167,9 @@ func endpointFromSpec(spec EndpointSpec) Endpoint {
 		controls: endpointControlPolicy{
 			controls: normalizeEndpointControlSpecs(spec.Controls),
 		},
-		requestContract:   normalizeRequestContract(spec.Request),
-		responseContracts: normalizeResponseContracts(spec.Responses),
+		requestContract:   requestContract,
+		responseContracts: responseContracts,
+		projectionIndex:   newLazyResponseProjectionSchema(responseContracts),
 		authKeys:          cloneEndpointAuthKeys(spec.AuthKeys),
 	}
 }

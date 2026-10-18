@@ -125,6 +125,11 @@ type Req struct {
 	// projection. It is exposed in the redacted audit shape by MarshalJSON.
 	responseCaller Caller
 
+	// meta is the parsed standard request_meta envelope. The endpoint runtime
+	// prepares it before application handlers run.
+	meta         Meta
+	metaPrepared bool
+
 	// AuthFailure records credential parsing or authentication failure details
 	// for audit output.
 	AuthFailure *AuthFailure `json:"auth_failure,omitempty"`

@@ -68,6 +68,7 @@ type Endpoint struct {
 	controls          endpointControlPolicy
 	requestContract   RequestContract
 	responseContracts []ResponseContract
+	projectionIndex   *lazyResponseProjectionSchema
 	authKeys          map[string]bool
 }
 
@@ -497,6 +498,14 @@ func (endpoint Endpoint) httpHandler() http.HandlerFunc {
 		if accessErr := endpoint.accessError(req); accessErr != nil {
 			completionState.outcome = CompletionOutcomeAccessDenied
 			responsepkg.RenderErr(req, accessErr)
+		} else if requestAcceptsMeta(ct, endpoint.accepts) {
+			if metaErr := req.PrepareMeta(); metaErr != nil {
+				responsepkg.RenderParamError(req, metaErr)
+			} else if projectionErr := endpoint.validateResponseProjection(req); projectionErr != nil {
+				responsepkg.RenderParamError(req, projectionErr)
+			} else {
+				endpointHandler(req)
+			}
 		} else {
 			endpointHandler(req)
 		}
