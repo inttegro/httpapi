@@ -10,10 +10,14 @@ requirements, and transcribe endpoint groups into OpenAPI documents.
 ## Specification
 
 The [HTTPAPI specification index](spec/README.md) lists every published edition.
-The current edition is [Version 0.1](spec/v0.1.md). It defines the portable
+The current edition is [Version 0.2](spec/v0.2.md). It defines the portable
 contract independently of this Go implementation and is the normative reference
 for implementations in other languages and for claims of HTTPAPI conformance.
 This README documents the Go API; the specification defines observable behavior.
+
+Target-specific mappings are optional, independently versioned
+[transcription profiles](spec/profiles/README.md). OpenAPI is one supported
+profile, not a dependency of the core HTTPAPI contract.
 
 The module is intentionally infrastructure-neutral. It does not know about your
 database, auth provider, logging stack, deployment platform, or service
@@ -907,6 +911,13 @@ doc, err := openapi31.Transcriber{
 Shared OpenAPI document shapes live in `openapi/spec`. Target-specific packages
 should be added under `openapi/<target>` and should translate from endpoint and
 response metadata rather than adding provider fields to endpoint structs.
+
+The OpenAPI 3.1 transcriber omits internal endpoints. Its response schemas
+currently aggregate attributes across caller-specific views and do not encode
+attribute availability. Treat the generated document as a description of
+possible payload shapes, not as authorization policy; runtime projection still
+enforces caller visibility. This is a declared limitation of the Go reference
+implementation's OpenAPI 3.1 transcription.
 
 ## Best Practices
 
