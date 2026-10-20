@@ -9,10 +9,11 @@ requirements, and transcribe endpoint groups into OpenAPI documents.
 
 ## Specification
 
-The [HTTPAPI Specification](SPEC.md) defines the portable contract independently
-of this Go implementation. It is the normative reference for implementations in
-other languages and for claims of HTTPAPI conformance. This README documents the
-Go API; the specification defines observable behavior.
+The [HTTPAPI specification index](spec/README.md) lists every published edition.
+The current edition is [Version 0.1](spec/v0.1.md). It defines the portable
+contract independently of this Go implementation and is the normative reference
+for implementations in other languages and for claims of HTTPAPI conformance.
+This README documents the Go API; the specification defines observable behavior.
 
 The module is intentionally infrastructure-neutral. It does not know about your
 database, auth provider, logging stack, deployment platform, or service
