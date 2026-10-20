@@ -1,0 +1,857 @@
+# HTTPAPI Specification
+
+Version 0.1 — 20 October 2026
+
+## Status
+
+This document defines HTTPAPI, a language-independent contract and execution
+model for typed HTTP services. It is the normative reference for interoperable
+implementations. The Go module in this repository is the reference
+implementation, but its package layout, exported names, type system, and
+storage choices are not part of the specification unless this document says
+otherwise.
+
+The key words **MUST**, **MUST NOT**, **REQUIRED**, **SHOULD**, **SHOULD NOT**,
+and **MAY** are to be interpreted as described by RFC 2119 and RFC 8174 when,
+and only when, they appear in uppercase.
+
+An implementation MAY expose additional language-native conveniences. Such
+conveniences MUST NOT change behavior visible on the wire or weaken a contract
+declared under this specification.
+
+## 1. Scope and conformance
+
+HTTPAPI has three conformance classes:
+
+1. A **contract implementation** supports the shape system, caller visibility,
+   request validation, response projection, envelope invariants, and structured
+   errors in Sections 3 through 9.
+2. A **runtime implementation** is a contract implementation that additionally
+   executes endpoints according to Sections 10 through 12.
+3. A **transcription implementation** converts the same contracts into an API
+   description according to Section 13. It MUST declare the description format
+   and version it supports.
+
+An implementation claiming conformance MUST state:
+
+- the HTTPAPI specification version;
+- its conformance class or classes;
+- any optional profiles it supports; and
+- every implementation limit that can reject an otherwise valid contract or
+  request.
+
+An implementation MUST NOT claim conformance by accepting only a subset of
+legal values without declaring that limit.
+
+## 2. Notation and terminology
+
+This document uses JSON as defined by RFC 8259 and HTTP semantics as defined by
+RFC 9110. JSON member names are called **properties**. A **field** is a member
+of a language-native record or structure. Specifications use “property” when
+describing JSON and “attribute” when describing an abstract response contract.
+
+Grammar is written in an EBNF-like notation:
+
+```text
+production = expression .
+alternative = first | second .
+optional = [ expression ] .
+repetition = { expression } .
+grouping = ( expression ) .
+```
+
+The following lexical productions are used by response projection:
+
+```text
+letter        = "A"…"Z" | "a"…"z" .
+digit         = "0"…"9" .
+name-char     = letter | digit | "_" | "-" .
+property-name = name-char , { name-char } .
+property-path = property-name , { "." , property-name } .
+```
+
+Whitespace may surround a resource name or complete property path and MUST be
+removed before validation. Whitespace is not permitted inside a name or path.
+Comparisons are case-sensitive unless a section explicitly says otherwise.
+
+An **absent** property is not present in its containing JSON object. A property
+whose value is JSON `null` is present. Null policy may subsequently treat it as
+absent.
+
+## 3. Contract model
+
+### 3.1 Endpoint
+
+An endpoint contract consists of:
+
+- one HTTP method and one canonical route pattern;
+- zero or more alias route patterns;
+- accepted request media types;
+- an access contract;
+- request and response contracts;
+- optional idempotency semantics;
+- an operation identifier, summary, kind, and accounting metadata;
+- optional request-size and execution-time limits;
+- optional route, priority, and control metadata.
+
+Methods are trimmed and uppercased. Operation kind is independently declared
+as `read` or `write`; it MUST NOT be inferred from the method. Priority, when
+present, is one of `critical`, `high`, `standard`, or `low`.
+
+The pair `(method, mounted-route-pattern)` MUST be unique. A runtime MUST reject
+a batch containing duplicate pairs before mounting any endpoint from that
+batch. Group path prefixes and endpoint paths are joined as URL paths and the
+result has one leading slash. Route-pattern matching syntax is supplied by the
+host router and is therefore outside portable HTTPAPI 0.1; implementations MUST
+document it.
+
+Alias routes MUST execute the same request, access, and response contracts as
+the canonical route. An alias MAY have a distinct operation identifier.
+
+HTTPAPI 0.1 runtime conformance requires `GET` and `POST`. Implementations MAY
+support additional methods, but MUST reject an endpoint declaration containing
+an unsupported method before serving traffic.
+
+### 3.2 Endpoint groups
+
+An endpoint group supplies defaults to its endpoints. Group defaults are
+applied before endpoint validation.
+
+- Caller restrictions intersect with endpoint restrictions. A child MUST NOT
+  widen caller access granted by its group.
+- Operation summary and accounting metadata inherit when the endpoint omits
+  them.
+- Operation identifier and operation kind do not inherit.
+- Timeout and limit structures inherit property by property.
+- Route defaults inherit when the endpoint omits them.
+
+### 3.3 Shape algebra
+
+A contract shape is one of:
+
+```text
+any
+boolean
+integer(format)
+number
+string
+time
+enum(strings)
+array(item-shape)
+map(value-shape)
+object(attributes, rules)
+discriminated-object(discriminator, variants)
+```
+
+`integer` formats distinguish at least 32-bit and 64-bit signed integers.
+`time` is represented as a JSON string in RFC 3339 date-time form. An `enum`
+accepts exact string members only. An `array` applies its item shape to every
+element. A `map` accepts arbitrary JSON property names and applies one value
+shape to every value.
+
+An object declares a finite set of properties. Each property has a name,
+shape, requiredness, null policy, and caller availability. Request objects MUST
+reject undeclared properties. Response objects MUST emit only declared,
+visible, selected attributes.
+
+The `any` request shape accepts any non-null JSON value after null policy has
+been applied. It does not imply arbitrary projectable descendants in a response
+projection schema.
+
+### 3.4 Bounds
+
+Bounds are inclusive. Their units are:
+
+| Shape | Minimum or maximum measures |
+| --- | --- |
+| string | encoded UTF-8 bytes |
+| array | number of items |
+| object | number of present properties |
+| integer or number | numeric value |
+
+An implementation MUST apply bounds after JSON type validation and before
+domain conversion.
+
+### 3.5 Presence rules
+
+An object may declare rules over named properties:
+
+```text
+presence-rule = (property-names, min-present, max-present)
+```
+
+A `max-present` value of zero means there is no upper bound. Common rules are:
+
+| Rule | min-present | max-present |
+| --- | ---: | ---: |
+| exactly one | 1 | 1 |
+| at least one | 1 | 0 |
+| at most one | 0 | 1 |
+
+Rules run after individual properties are parsed. For a restricted caller,
+only properties visible to that caller participate in the rule. Independent
+rules MUST be evaluated independently; declaring two exactly-one groups does
+not combine them into one group.
+
+### 3.6 Discriminated objects
+
+A discriminated object declares a required string property and an exact map
+from discriminator values to variant object shapes.
+
+Validation MUST:
+
+1. require the discriminator;
+2. require a JSON string value;
+3. select the exact matching variant;
+4. reject an unknown value with `request_parameter_value_not_allowed`; and
+5. validate the remaining properties against the selected variant.
+
+The variant shape MUST NOT redeclare the discriminator. The discriminator is
+removed before variant parsing and restored only in the resulting domain value
+if the implementation's contract asks for it.
+
+## 4. Callers, visibility, and authority
+
+A caller is a trusted, application-defined label for the request source. It is
+not an authentication scheme. Caller labels MUST be trimmed, lowercased, and
+MUST NOT contain whitespace or control characters.
+
+A caller set has one of these meanings:
+
+- an unrestricted zero set allows every caller;
+- a restricted set with no members allows no caller; and
+- a restricted nonempty set allows only its members.
+
+Implementations MUST obtain the caller from trusted runtime context. A request
+body or arbitrary client header MUST NOT be allowed to choose its caller.
+
+Caller availability can restrict endpoints, request properties, response
+attributes, and projection-schema paths. A request property hidden from the
+active caller MUST be treated as undeclared. If the client sends it, the result
+is `unexpected_request_parameter`; the response MUST NOT reveal that a hidden
+property exists.
+
+### 4.1 Response authority projection
+
+A trusted caller may request the response representation of another caller.
+Authority projection is defined by a directed acyclic graph. An edge from A to
+B means A may project as B.
+
+- A caller may project as itself.
+- Reachability is transitive.
+- Upward and lateral projections are denied.
+- An undefined granted caller is denied.
+- If no requested caller is supplied, the granted caller remains active.
+
+The graph MUST be validated as acyclic when it is constructed.
+
+## 5. Request validation
+
+### 5.1 JSON request body
+
+For an endpoint with a JSON object request contract:
+
+- an empty or whitespace-only body is equivalent to `{}`;
+- the top-level value MUST be a JSON object;
+- exactly one JSON value is permitted; and
+- trailing non-whitespace data is invalid.
+
+The validation order is normative:
+
+1. decode the top-level object;
+2. determine the caller-visible property set;
+3. reject undeclared or caller-hidden properties;
+4. parse declared properties in declaration order;
+5. evaluate presence rules in declaration order; and
+6. invoke the endpoint's final domain converter, if any.
+
+The first failure terminates validation. Implementations MUST NOT depend on
+unordered map iteration when choosing the first failure.
+
+### 5.2 Null policy
+
+Every request property has one of three null policies:
+
+| Policy | Meaning |
+| --- | --- |
+| `as_absent` | JSON `null` is treated as though the property were absent. This is the default. |
+| `rejected` | JSON `null` produces `request_parameter_null_rejected`. |
+| `accepted` | JSON `null` remains present and the domain converter receives the target type's zero or default value. |
+
+Requiredness and presence rules are evaluated after null policy.
+
+### 5.3 Parameter paths
+
+Errors identify the failing location with a parameter path. Object properties
+use dot notation and array indexes use brackets:
+
+```text
+customer.email
+items[2].price.value
+```
+
+A choice-rule error joins the participating property paths with `|` in
+declaration order.
+
+### 5.4 Request error codes
+
+The following codes are stable:
+
+| Code | Condition |
+| --- | --- |
+| `invalid_request_body` | body is not one complete JSON object |
+| `missing_request_parameter` | required property is absent |
+| `request_parameter_choice_required` | a required presence group has too few members |
+| `request_parameters_mutually_exclusive` | a presence group has too many members |
+| `unexpected_request_parameter` | property is undeclared or unavailable to caller |
+| `request_parameter_null_rejected` | null policy rejects a present null |
+| `request_parameter_type_mismatch` | JSON type does not match the declared shape |
+| `request_parameter_value_not_allowed` | enum or discriminator value is not allowed |
+| `request_parameter_too_small` | inclusive lower bound is violated |
+| `request_parameter_too_large` | inclusive upper bound is violated |
+| `request_parameter_parse_failed` | wire value cannot be converted to a domain value |
+| `invalid_request_parameter` | endpoint validation rejects an otherwise parsed value |
+| `invalid_response_projection` | projection names a resource or path outside the visible response contract |
+
+## 6. Standard request metadata
+
+HTTPAPI reserves the top-level `request_meta` property. It is runtime metadata,
+not an endpoint domain parameter. A conforming runtime MUST parse and remove it
+before invoking the endpoint-specific request parser.
+
+```json
+{
+  "request_meta": {
+    "idempotency_key": "checkout-2026-10-20-001",
+    "response": {
+      "projection": {
+      "product": { "omit": ["media"] },
+      "merchant": { "pick": ["app_id", "name", "branding.accent_color"] }
+      }
+    }
+  }
+}
+```
+
+An omitted or JSON-null metadata member has no effect. Unrecognized metadata
+properties MUST be ignored for forward compatibility. A recognized property
+with the wrong JSON type MUST be rejected using the request error model.
+
+The top-level property `idempotency_key` is not an alias and MUST be rejected by
+an endpoint object contract unless that endpoint independently declares it.
+
+## 7. Response projection
+
+Response projection lets a caller prevent unnecessary response work and select
+a smaller public representation. It is a request preference carried at:
+
+```text
+request_meta.response.projection
+```
+
+### 7.1 Wire form
+
+The projection is an object keyed by response resource name. Each resource
+MUST contain exactly one nonempty `pick` or `omit` array.
+
+```json
+{
+  "request_meta": {
+    "response": {
+      "projection": {
+      "product": { "omit": ["media.gallery", "description"] }
+      }
+    }
+  }
+}
+```
+
+Resource names and property paths use the grammar in Section 2. A selection
+array:
+
+- MUST contain at least one string;
+- is an unordered set;
+- MUST NOT contain a duplicate after trimming; and
+- MUST NOT contain an empty path or empty path segment.
+
+Specifying both modes produces
+`request_parameters_mutually_exclusive`. Specifying neither produces
+`request_parameter_choice_required`. Unknown selection properties produce
+`unexpected_request_parameter`.
+
+### 7.2 Selection semantics
+
+An unmentioned resource has its complete caller-visible representation.
+
+For `pick`:
+
+- a selected property is included;
+- all ancestors required to contain a selected descendant are included; and
+- selecting a parent includes its complete caller-visible subtree.
+
+For `omit`:
+
+- the selected property and all descendants are excluded; and
+- ancestors remain present unless independently omitted.
+
+Formally, for candidate path `c` and selected path `s`:
+
+```text
+pick-includes(c, s) = c = s
+  or c starts with s + "."
+  or s starts with c + "."
+
+omit-excludes(c, s) = c = s
+  or c starts with s + "."
+```
+
+If more than one active resource scope applies to an attribute, the selections
+intersect. Every active scope MUST include the attribute. No scope may widen
+another.
+
+### 7.3 Deriving the valid projection schema
+
+The endpoint's successful typed JSON response contracts are the only source of
+valid projectable resources and properties. Implementers MUST derive the
+projection schema; endpoint authors MUST NOT maintain a parallel list.
+
+Only response contracts with status 200 through 299, JSON media type, and a
+typed body participate. Error, untyped, streaming, text, HTML, byte, empty, and
+redirect responses do not expand the schema.
+
+Every object-valued attribute is a projectable resource named after that
+attribute. Arrays expose their item object. Maps expose their value object.
+Nested objects are both descendants of their enclosing resource and resources
+in their own right. A scalar or `any` value has no projectable descendants.
+
+If the same resource name occurs in multiple successful contracts, a path is
+valid when at least one caller-visible occurrence contains that path.
+
+Caller visibility is part of schema validation. A resource or path that is not
+visible to the active response caller MUST be reported as invalid, without
+revealing whether it exists for another caller.
+
+### 7.4 Validation and execution boundary
+
+Generic projection syntax is validated while parsing `request_meta`. Resource
+and path validity is validated against the derived endpoint schema before the
+application handler runs.
+
+An invalid resource reports:
+
+```text
+request_meta.response.projection.<resource>
+```
+
+An invalid property reports its array position:
+
+```text
+request_meta.response.projection.<resource>.<mode>[<index>]
+```
+
+Both use code `invalid_response_projection`.
+
+The validated projection MUST be available to the handler. A handler MAY use it
+to skip reads or computation. During shaping, an implementation MUST decide
+whether an attribute is selected before calling its getter, converter, nested
+shaper, or serializer. Building a complete representation and discarding
+omitted properties afterward is not conforming.
+
+Schema derivation MAY be lazy. It MUST be thread-safe and produce behavior
+identical to eager derivation.
+
+## 8. Response shaping
+
+### 8.1 Object attributes
+
+A response object attribute declares:
+
+- JSON property name;
+- response shape;
+- required or optional presence; and
+- caller availability.
+
+Rendering order is:
+
+1. verify caller availability;
+2. verify projection inclusion;
+3. obtain the attribute value;
+4. apply the nested shape; and
+5. add the JSON property.
+
+Steps 3 through 5 MUST NOT run for an unavailable or omitted attribute.
+
+An optional attribute may be absent. A required visible and selected attribute
+must produce a value. Failure to do so is an implementation or application
+contract violation and MUST result in an internal failure, not a partial
+successful response.
+
+### 8.2 Envelopes
+
+An envelope is a typed top-level JSON object. It MUST declare at least one
+attribute and MUST emit at least one attribute after caller and property
+projection.
+
+An envelope may declare any number of independent presence rules, including
+multiple exactly-one groups. Each rule is evaluated independently after
+projection. This permits response alternatives such as exactly one of `order`
+or `purchase_intent`, plus exactly one of `result` or `error`, without merging
+the alternatives into one group.
+
+Language-specific restrictions used to make an envelope type-safe, such as
+requiring distinct native value types for attributes, are not part of HTTPAPI.
+
+### 8.3 Response representations
+
+A runtime implementation MUST support typed JSON responses and structured JSON
+errors. It MAY additionally support text, HTML, bytes, empty responses,
+redirects, and streams. Each response contract declares its status and media
+type. If status is absent, it defaults to 200.
+
+Streaming responses are not eligible for idempotent replay.
+
+### 8.4 Response metadata
+
+`response_meta` is the reserved top-level envelope property for curated body
+metadata. It is optional, caller-visible, and projectable like any other
+declared response attribute. HTTP status and headers remain native HTTP
+metadata and SHOULD NOT be copied into `response_meta`; `request_id` is the
+exception when an endpoint intentionally mirrors `X-Request-Id` into its body.
+
+Metadata values MUST be JSON-serializable and MUST NOT contain request objects,
+headers, streams, byte buffers, functions, channels, or equivalent runtime
+objects. A metadata key MUST be nonempty and MUST be rejected when its
+case-insensitive, hyphen/dot/space-to-underscore normalization contains any of:
+
+```text
+access_token       authorization    idempotency_key  provider_payload
+api_key            client_secret    password         raw_request
+cookie             private_key      refresh_token    raw_response
+request_body       set_cookie        stack_trace
+```
+
+Supplying a null metadata value removes that property. An empty
+`response_meta` object is omitted.
+
+### 8.5 Standard response headers
+
+A runtime writes these headers when their corresponding values exist:
+
+| Header | Meaning |
+| --- | --- |
+| `Content-Type` | response representation media type |
+| `X-Request-Id` | stable request identifier |
+| `X-Request-Timing` | endpoint processing duration |
+| `Retry-After` | retry guidance for an applicable error |
+
+Header names are case-insensitive as required by HTTP. An idempotent replay
+additionally writes `Idempotent-Replayed: true`.
+
+## 9. Structured errors
+
+Errors use this JSON envelope:
+
+```json
+{
+  "error": {
+    "message": "`customer.email` must be a string",
+    "fix_code": "change_request_parameters",
+    "detail": "customer.email",
+    "cause": "invalid_request_parameter",
+    "type": "invalid_request_parameter",
+    "code": "request_parameter_type_mismatch",
+    "url": "https://example.com/errors/request_parameter_type_mismatch"
+  }
+}
+```
+
+`type`, `code`, and `url` are required JSON strings. `message`, `fix_code`,
+`detail`, and `cause` are optional JSON strings. HTTP status is carried by HTTP
+and MUST NOT be duplicated in this object.
+
+`code` is the most specific stable machine-readable identifier. `type` groups
+errors by client handling. `cause` identifies the underlying category.
+`fix_code` recommends a machine-readable corrective action. Clients MUST NOT
+parse `message` to determine behavior.
+
+Request validation errors use HTTP 400 and the Section 5 code. Their `detail`
+is the parameter path and `fix_code` is `change_request_parameters`.
+
+- `invalid_request_body` uses type `invalid_request` and cause
+  `invalid_request_body`.
+- missing-property and required-choice errors use cause
+  `missing_request_parameter`.
+- other parameter failures use type and cause
+  `invalid_request_parameter`.
+
+An unclassified internal error MUST use HTTP 500 and code `request_failed` and
+MUST NOT expose its underlying exception, stack, credentials, storage details,
+or private request data.
+
+## 10. Runtime processing
+
+For every request, a conforming runtime performs the following observable steps
+in order:
+
+1. match the route and check the method;
+2. check the request media type;
+3. enforce the request-size limit across the request line, headers, separator,
+   and body while reading the body;
+4. construct the request and authenticate it;
+5. enforce internal, authorization, caller, and control access policy;
+6. parse and strip standard request metadata for compatible JSON requests;
+7. validate the response projection against the endpoint response contracts;
+8. reserve or replay idempotency when the endpoint is idempotent;
+9. invoke the application handler;
+10. require the handler to set one response, or produce an internal failure;
+11. shape and write the response; and
+12. record completion and audit information.
+
+The handler MUST NOT run after a failure in an earlier step. Observability sink
+failures MUST NOT change the client response. A panic or uncaught exception MAY
+be rethrown after completion recording, but the runtime MUST NOT report a
+successful response for it.
+
+For non-GET requests, an explicitly supplied media type must match one of the
+endpoint's accepted base media types. Media-type parameters do not change the
+base type. A missing `Content-Type` is permitted by HTTPAPI 0.1 for compatibility
+and does not itself select a different parser.
+
+### 10.1 Access
+
+Authorization modes are `any`, `bearer`, and `service`.
+
+- `any` accepts any valid authorized session.
+- `bearer` requires a bearer session.
+- `service` requires an authorized service session.
+- an internal endpoint always requires an authorized service session.
+
+An unauthenticated failure uses HTTP 401. An authenticated caller with the
+wrong mode, caller, internal status, or control decision uses HTTP 403.
+
+Endpoint controls fail closed. If a declared control has no evaluator or its
+evaluator fails, the request MUST NOT reach the handler.
+
+## 11. Idempotency
+
+An idempotent endpoint accepts a key from the `Idempotency-Key` header or from
+`request_meta.idempotency_key`. If both are supplied, their normalized values
+MUST match.
+
+A key is trimmed and MUST contain 1 through 255 UTF-8 bytes. It MUST NOT contain
+ASCII control characters, DEL, or whitespace characters at or below U+0020.
+
+The default scope is:
+
+```text
+<authenticated-application-id>#<service-namespace>#<uppercase-method>#<route-pattern>
+```
+
+An implementation may provide a custom scope resolver. An unauthenticated
+request without a custom scope resolver bypasses idempotency because it has no
+safe application scope.
+
+### 11.1 Fingerprint
+
+The operation fingerprint is the lowercase hexadecimal SHA-256 digest of the
+canonical JSON request body after removing the top-level `request_meta`
+property. An empty body is canonicalized as `{}`. Canonicalization is defined
+in Appendix C.
+
+This exclusion makes retries equivalent when only idempotency or response
+projection preferences change. Implementations MUST NOT include secrets or
+caller-invisible runtime context in the fingerprint.
+
+### 11.2 Reservation and replay
+
+The store MUST atomically reserve `(scope, key)` and retain records for 24
+hours. A reservation records the fingerprint and request identifier.
+
+- An existing incomplete reservation produces an in-progress error.
+- A complete record with another fingerprint produces a conflict.
+- A complete record with the same fingerprint replays status, media type,
+  replayable headers, and body, and adds `Idempotent-Replayed: true`.
+
+Only non-streaming 2xx responses are completed and replayable. A failure,
+missing response, or stream releases the reservation. If the store is absent or
+unavailable, an idempotent endpoint fails closed.
+
+## 12. Observability profile
+
+The observability profile is optional. An implementation claiming it records a
+completion outcome from this stable set:
+
+```text
+handled
+method_not_allowed
+unsupported_content_type
+request_too_large
+invalid_request_body
+parse_failed
+access_denied
+timed_out
+panicked
+```
+
+It SHOULD also record request ID, method, route pattern, duration, response
+status, response size, authenticated application or service identity when
+available, and provider-neutral cost usage. Pricing is outside HTTPAPI.
+
+Secrets, authorization tokens, and raw credentials MUST be redacted from audit
+representations.
+
+## 13. API-description transcription
+
+A transcription implementation uses the same endpoint, request, response,
+caller, and invariant contracts executed by the runtime. It MUST NOT maintain a
+second manually authored response schema.
+
+For OpenAPI 3.1:
+
+- shape types and formats map to their corresponding JSON Schema forms;
+- required object attributes populate `required`;
+- enums populate `enum`;
+- inclusive bounds populate the corresponding minimum and maximum keywords;
+- presence rules are represented with equivalent JSON Schema composition; and
+- internal-only endpoints are omitted from a public document.
+
+A deployment-gateway transcription MAY include internal endpoints when the
+gateway itself must route them, but MUST preserve their service-only access
+policy.
+
+## 14. Determinism and implementation limits
+
+Given the same endpoint contract, caller, request, and runtime dependencies, a
+conforming implementation MUST produce the same validation result and selected
+JSON representation.
+
+Implementations MUST define stable order for:
+
+- declared property parsing;
+- presence-rule evaluation;
+- projection path validation; and
+- response attribute extraction.
+
+JSON object property order on the wire is not significant. Error selection
+order is significant because only the first error is returned. When a request
+contains multiple undeclared properties, an implementation MAY report any one
+of them; all other validation order remains deterministic.
+
+Implementations MAY compile contracts to maps, tries, flat prefix trees,
+generated code, or another representation. The representation MUST NOT change
+the semantics. A compiled projection schema SHOULD be immutable and shared by
+concurrent requests.
+
+## 15. Security requirements
+
+An implementation:
+
+- MUST derive caller and authorization state from trusted context;
+- MUST apply caller visibility during request parsing, response shaping, and
+  projection validation;
+- MUST validate projection before invoking application code;
+- MUST enforce request-size limits while reading, not after an unbounded read;
+- MUST fail closed for missing security controls and idempotency stores;
+- MUST NOT leak hidden contract properties through different error codes;
+- MUST NOT expose internal exceptions in structured errors; and
+- MUST avoid invoking getters or domain computations for omitted response
+  properties.
+
+## Appendix A. Normative examples
+
+### A.1 Pick and omit
+
+For this response:
+
+```json
+{
+  "product": {
+    "id": "prod_123",
+    "name": "Shoes",
+    "media": {
+      "cover": "https://example.test/cover.jpg",
+      "gallery": ["https://example.test/one.jpg"]
+    }
+  }
+}
+```
+
+`{"product":{"pick":["media.cover"]}}` emits:
+
+```json
+{
+  "product": {
+    "media": {
+      "cover": "https://example.test/cover.jpg"
+    }
+  }
+}
+```
+
+`{"product":{"omit":["media.gallery"]}}` emits `id`, `name`, and
+`media.cover`, while retaining the `media` ancestor.
+
+### A.2 Independent envelope alternatives
+
+Given attributes `order`, `purchase_intent`, `result`, and `error`, these two
+rules are independent:
+
+```text
+exactly-one(order, purchase_intent)
+exactly-one(result, error)
+```
+
+`order + result` is valid. `purchase_intent + error` is valid. `order` alone,
+or `order + purchase_intent + result`, is invalid.
+
+### A.3 Caller-hidden request property
+
+If `provider_reference` is visible only to caller `worker`, a public request
+containing it fails with:
+
+```json
+{
+  "error": {
+    "detail": "provider_reference",
+    "type": "invalid_request_parameter",
+    "code": "unexpected_request_parameter",
+    "url": ""
+  }
+}
+```
+
+The error does not say that the property exists for `worker`.
+
+## Appendix B. References
+
+- [RFC 2119](https://www.rfc-editor.org/rfc/rfc2119), *Key words for use in
+  RFCs to Indicate Requirement Levels*
+- [RFC 8174](https://www.rfc-editor.org/rfc/rfc8174), *Ambiguity of Uppercase
+  vs Lowercase in RFC 2119 Key Words*
+- [RFC 8259](https://www.rfc-editor.org/rfc/rfc8259), *The JavaScript Object
+  Notation (JSON) Data Interchange Format*
+- [RFC 9110](https://www.rfc-editor.org/rfc/rfc9110), *HTTP Semantics*
+- [OpenAPI Specification 3.1](https://spec.openapis.org/oas/v3.1.0)
+
+## Appendix C. Idempotency canonical JSON
+
+Idempotency canonicalization is intentionally narrower than a general JSON
+canonicalization scheme. It preserves the caller's JSON number tokens so an
+implementation does not silently change numeric precision.
+
+1. Decode exactly one top-level JSON object while preserving each number's
+   original valid JSON token.
+2. Remove the top-level `request_meta` property.
+3. Encode recursively without insignificant whitespace.
+4. Preserve array element order.
+5. Sort object property names lexicographically by their UTF-8 byte sequence.
+6. Encode `null`, `true`, and `false` as those lowercase literals.
+7. Encode number tokens exactly as decoded.
+8. Encode strings as UTF-8 JSON strings. Escape quotation mark and reverse
+   solidus, use the shortest standard escape for control characters, encode
+   other U+0000 through U+001F values as lowercase `\u00xx`, and encode `<`,
+   `>`, `&`, U+2028, and U+2029 with lowercase `\u` escapes. Invalid UTF-8 is
+   replaced with U+FFFD before encoding.
+
+The SHA-256 digest is computed over the resulting UTF-8 bytes and rendered as
+64 lowercase hexadecimal characters.

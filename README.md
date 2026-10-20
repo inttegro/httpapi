@@ -7,6 +7,13 @@ It helps service teams define endpoint contracts, parse request bodies into
 domain-ready values, render caller-aware responses, enforce runtime endpoint
 requirements, and transcribe endpoint groups into OpenAPI documents.
 
+## Specification
+
+The [HTTPAPI Specification](SPEC.md) defines the portable contract independently
+of this Go implementation. It is the normative reference for implementations in
+other languages and for claims of HTTPAPI conformance. This README documents the
+Go API; the specification defines observable behavior.
+
 The module is intentionally infrastructure-neutral. It does not know about your
 database, auth provider, logging stack, deployment platform, or service
 configuration system. Applications plug those pieces in at the package
