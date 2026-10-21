@@ -102,7 +102,23 @@ func TestResponseMetaDeletesNilValues(t *testing.T) {
 	}
 }
 
-func TestResponseMetaPanicsForUnsafeKeysAndValues(t *testing.T) {
+func TestResponseMetaAcceptsApplicationDefinedKeys(t *testing.T) {
+	meta := Meta().
+		Set("application_context", map[string]any{"source": "processor"}).
+		Debug("implementation_detail", "fallback")
+
+	values := meta.Values()
+	context, ok := values["application_context"].(map[string]any)
+	if !ok || context["source"] != "processor" {
+		t.Fatalf("application_context = %#v", values["application_context"])
+	}
+	debug, ok := values["debug"].(map[string]any)
+	if !ok || debug["implementation_detail"] != "fallback" {
+		t.Fatalf("debug = %#v", values["debug"])
+	}
+}
+
+func TestResponseMetaPanicsForInvalidKeysAndValues(t *testing.T) {
 	tests := []struct {
 		name string
 		run  func()
@@ -111,18 +127,6 @@ func TestResponseMetaPanicsForUnsafeKeysAndValues(t *testing.T) {
 			name: "empty key",
 			run: func() {
 				Meta().Set(" ", "value")
-			},
-		},
-		{
-			name: "authorization key",
-			run: func() {
-				Meta().Set("authorization", "Bearer secret")
-			},
-		},
-		{
-			name: "request body key",
-			run: func() {
-				Meta().Debug("request_body", map[string]any{"card": "nope"})
 			},
 		},
 		{
@@ -139,12 +143,6 @@ func TestResponseMetaPanicsForUnsafeKeysAndValues(t *testing.T) {
 			},
 		},
 		{
-			name: "nested unsafe key",
-			run: func() {
-				Meta().Set("stats", map[string]any{"authorization": "Bearer secret"})
-			},
-		},
-		{
 			name: "nested unsafe value",
 			run: func() {
 				Meta().Set("stats", map[string]any{"headers": http.Header{"Authorization": {"Bearer secret"}}})
@@ -154,12 +152,6 @@ func TestResponseMetaPanicsForUnsafeKeysAndValues(t *testing.T) {
 			name: "slice unsafe value",
 			run: func() {
 				Meta().Set("events", []any{http.Header{"Authorization": {"Bearer secret"}}})
-			},
-		},
-		{
-			name: "typed slice unsafe value",
-			run: func() {
-				Meta().Set("events", []map[string]any{{"authorization": "Bearer secret"}})
 			},
 		},
 		{

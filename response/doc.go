@@ -117,6 +117,6 @@
 //	))
 //
 // response_meta is curated body metadata. HTTP status and headers remain native
-// HTTP response fields; do not place raw requests, authorization material,
-// idempotency keys, provider payloads, stack traces, or secrets in response_meta.
+// HTTP response fields. Applications define their own metadata property names
+// and must not expose secret, private, or caller-invisible values.
 package response

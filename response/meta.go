@@ -20,30 +20,12 @@ const (
 	responseMetaRequestIDName = "request_id"
 )
 
-var unsafeMetaKeyFragments = []string{
-	"access_token",
-	"api_key",
-	"authorization",
-	"client_secret",
-	"cookie",
-	"idempotency_key",
-	"password",
-	"private_key",
-	"provider_payload",
-	"raw_request",
-	"raw_response",
-	"refresh_token",
-	"request_body",
-	"set_cookie",
-	"stack_trace",
-}
-
 // ResponseMeta is a builder for the response_meta envelope field.
 //
 // ResponseMeta is intentionally curated response-body metadata, not a raw HTTP
-// conversation dump. Keep HTTP status and headers on the native response, and
-// avoid storing request bodies, authorization material, idempotency keys,
-// provider payloads, stack traces, or secrets in response_meta.
+// conversation dump. Keep HTTP status and headers on the native response. The
+// application defines its property names and remains responsible for excluding
+// secret, private, or caller-invisible values.
 type ResponseMeta struct {
 	values       map[string]any
 	availability callerpkg.Set
@@ -67,7 +49,8 @@ func (meta *ResponseMeta) AvailableTo(callers ...callerpkg.Caller) *ResponseMeta
 
 // Set stores one curated response_meta value.
 //
-// Set panics for empty or obviously unsafe keys. Passing nil deletes the key so
+// Set panics for an empty key or a value that cannot be represented safely as
+// JSON. Property names are application-defined. Passing nil deletes the key so
 // callers can fluently add optional values without leaking JSON nulls.
 func (meta *ResponseMeta) Set(key string, value any) *ResponseMeta {
 	if meta == nil {
@@ -211,12 +194,6 @@ func normalizeMetaKey(key string) string {
 	key = strings.TrimSpace(key)
 	if key == "" {
 		panic("httpapi/response: response meta key is required")
-	}
-	normalized := strings.ToLower(strings.NewReplacer("-", "_", ".", "_", " ", "_").Replace(key))
-	for _, fragment := range unsafeMetaKeyFragments {
-		if strings.Contains(normalized, fragment) {
-			panic(fmt.Sprintf("httpapi/response: unsafe response meta key %q", key))
-		}
 	}
 	return key
 }
