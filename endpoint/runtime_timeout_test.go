@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	responsepkg "github.com/zebodotdev/httpapi/response"
+	responsepkg "github.com/inttegro/httpapi/response"
 )
 
 func TestDefineEndpointTimeoutSpec(t *testing.T) {

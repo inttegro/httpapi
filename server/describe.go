@@ -1,10 +1,10 @@
 package server
 
 import (
-	"github.com/zebodotdev/httpapi/endpoint"
-	"github.com/zebodotdev/httpapi/openapi/gcpapigateway"
-	"github.com/zebodotdev/httpapi/openapi/openapi31"
-	"github.com/zebodotdev/httpapi/openapi/spec"
+	"github.com/inttegro/httpapi/endpoint"
+	"github.com/inttegro/httpapi/openapi/gcpapigateway"
+	"github.com/inttegro/httpapi/openapi/openapi31"
+	"github.com/inttegro/httpapi/openapi/spec"
 )
 
 // DescribeOpenAPI31 returns a public OpenAPI 3.1 document for the endpoints

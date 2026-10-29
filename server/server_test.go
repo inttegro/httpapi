@@ -6,9 +6,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/zebodotdev/httpapi/endpoint"
-	"github.com/zebodotdev/httpapi/openapi/gcpapigateway"
-	"github.com/zebodotdev/httpapi/response"
+	"github.com/inttegro/httpapi/endpoint"
+	"github.com/inttegro/httpapi/openapi/gcpapigateway"
+	"github.com/inttegro/httpapi/response"
 )
 
 func TestNewAppliesDefaults(t *testing.T) {

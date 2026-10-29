@@ -4,9 +4,9 @@ import (
 	"net/http"
 	"sync"
 
-	"github.com/zebodotdev/httpapi/param"
-	requestpkg "github.com/zebodotdev/httpapi/request"
-	responsepkg "github.com/zebodotdev/httpapi/response"
+	"github.com/inttegro/httpapi/param"
+	requestpkg "github.com/inttegro/httpapi/request"
+	responsepkg "github.com/inttegro/httpapi/response"
 )
 
 // lazyResponseProjectionSchema is kept behind a pointer on Endpoint on purpose:

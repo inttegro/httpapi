@@ -1,6 +1,6 @@
 package endpoint
 
-import callerpkg "github.com/zebodotdev/httpapi/caller"
+import callerpkg "github.com/inttegro/httpapi/caller"
 
 // EndpointSpec is the declarative contract for one HTTP endpoint.
 //

@@ -5,9 +5,9 @@ import (
 	"net/http"
 	"strings"
 
-	callerpkg "github.com/zebodotdev/httpapi/caller"
-	parampkg "github.com/zebodotdev/httpapi/param"
-	responsepkg "github.com/zebodotdev/httpapi/response"
+	callerpkg "github.com/inttegro/httpapi/caller"
+	parampkg "github.com/inttegro/httpapi/param"
+	responsepkg "github.com/inttegro/httpapi/response"
 )
 
 // RequestContract describes the request payload accepted by an endpoint.

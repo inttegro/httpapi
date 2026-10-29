@@ -6,8 +6,8 @@ import (
 	"net/http"
 	"time"
 
-	e "github.com/zebodotdev/httpapi/erreur"
-	responsepkg "github.com/zebodotdev/httpapi/response"
+	e "github.com/inttegro/httpapi/erreur"
+	responsepkg "github.com/inttegro/httpapi/response"
 )
 
 // EndpointTimeoutSpec declares runtime timeout budgets for one endpoint.

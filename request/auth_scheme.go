@@ -1,6 +1,6 @@
 package request
 
-import authpkg "github.com/zebodotdev/httpapi/auth"
+import authpkg "github.com/inttegro/httpapi/auth"
 
 const (
 	defaultBearerAuthorizationScheme  = authpkg.DefaultBearerAuthorizationScheme

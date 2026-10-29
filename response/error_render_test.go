@@ -4,9 +4,9 @@ import (
 	"net/http"
 	"testing"
 
-	callerpkg "github.com/zebodotdev/httpapi/caller"
-	e "github.com/zebodotdev/httpapi/erreur"
-	"github.com/zebodotdev/httpapi/param"
+	callerpkg "github.com/inttegro/httpapi/caller"
+	e "github.com/inttegro/httpapi/erreur"
+	"github.com/inttegro/httpapi/param"
 )
 
 func TestRenderParamErrUsesCustomErrorFields(t *testing.T) {

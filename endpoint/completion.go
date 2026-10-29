@@ -7,10 +7,10 @@ import (
 	"sync"
 	"time"
 
-	callerpkg "github.com/zebodotdev/httpapi/caller"
-	"github.com/zebodotdev/httpapi/cost"
-	e "github.com/zebodotdev/httpapi/erreur"
-	responsepkg "github.com/zebodotdev/httpapi/response"
+	callerpkg "github.com/inttegro/httpapi/caller"
+	"github.com/inttegro/httpapi/cost"
+	e "github.com/inttegro/httpapi/erreur"
+	responsepkg "github.com/inttegro/httpapi/response"
 )
 
 // CompletionOutcome identifies the runtime path that completed an endpoint

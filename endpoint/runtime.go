@@ -6,10 +6,10 @@ import (
 	"os"
 	"time"
 
-	callerpkg "github.com/zebodotdev/httpapi/caller"
-	e "github.com/zebodotdev/httpapi/erreur"
-	requestpkg "github.com/zebodotdev/httpapi/request"
-	responsepkg "github.com/zebodotdev/httpapi/response"
+	callerpkg "github.com/inttegro/httpapi/caller"
+	e "github.com/inttegro/httpapi/erreur"
+	requestpkg "github.com/inttegro/httpapi/request"
+	responsepkg "github.com/inttegro/httpapi/response"
 )
 
 // HttpMethod is the HTTP method type accepted by endpoint constructors.

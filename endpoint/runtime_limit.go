@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"strings"
 
-	e "github.com/zebodotdev/httpapi/erreur"
+	e "github.com/inttegro/httpapi/erreur"
 )
 
 // EndpointLimitsSpec declares runtime request limits for one endpoint.

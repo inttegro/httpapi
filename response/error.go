@@ -3,8 +3,8 @@ package response
 import (
 	"net/http"
 
-	e "github.com/zebodotdev/httpapi/erreur"
-	"github.com/zebodotdev/httpapi/param"
+	e "github.com/inttegro/httpapi/erreur"
+	"github.com/inttegro/httpapi/param"
 )
 
 // ErrorBody is the standard JSON response body for structured httpapi errors.

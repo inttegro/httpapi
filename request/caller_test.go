@@ -9,8 +9,8 @@ import (
 	"strings"
 	"testing"
 
-	callerpkg "github.com/zebodotdev/httpapi/caller"
-	responsepkg "github.com/zebodotdev/httpapi/response"
+	callerpkg "github.com/inttegro/httpapi/caller"
+	responsepkg "github.com/inttegro/httpapi/response"
 )
 
 type callerProjectionBody struct{}

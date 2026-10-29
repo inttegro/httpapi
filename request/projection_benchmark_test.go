@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/zebodotdev/httpapi/param"
-	responsepkg "github.com/zebodotdev/httpapi/response"
+	"github.com/inttegro/httpapi/param"
+	responsepkg "github.com/inttegro/httpapi/response"
 )
 
 var benchmarkProjectionError *param.Error

@@ -7,9 +7,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/zebodotdev/httpapi/cost"
-	"github.com/zebodotdev/httpapi/param"
-	"github.com/zebodotdev/httpapi/response"
+	"github.com/inttegro/httpapi/cost"
+	"github.com/inttegro/httpapi/param"
+	"github.com/inttegro/httpapi/response"
 )
 
 func TestEndpointCompletionSinkReceivesSuccessfulRequest(t *testing.T) {

@@ -1,8 +1,8 @@
 package endpoint
 
 import (
-	parampkg "github.com/zebodotdev/httpapi/param"
-	responsepkg "github.com/zebodotdev/httpapi/response"
+	parampkg "github.com/inttegro/httpapi/param"
+	responsepkg "github.com/inttegro/httpapi/response"
 )
 
 // RequestHandler is an endpoint handler that receives a parsed request body.

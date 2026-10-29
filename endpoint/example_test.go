@@ -5,9 +5,9 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/zebodotdev/httpapi/endpoint"
-	"github.com/zebodotdev/httpapi/param"
-	"github.com/zebodotdev/httpapi/response"
+	"github.com/inttegro/httpapi/endpoint"
+	"github.com/inttegro/httpapi/param"
+	"github.com/inttegro/httpapi/response"
 )
 
 type createTaskRequest struct {

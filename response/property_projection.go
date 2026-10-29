@@ -3,7 +3,7 @@ package response
 import (
 	"strings"
 
-	callerpkg "github.com/zebodotdev/httpapi/caller"
+	callerpkg "github.com/inttegro/httpapi/caller"
 )
 
 // Projection is the response-property selection supplied by a caller.

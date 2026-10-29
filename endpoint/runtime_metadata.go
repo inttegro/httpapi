@@ -1,8 +1,8 @@
 package endpoint
 
 import (
-	authpkg "github.com/zebodotdev/httpapi/auth"
-	callerpkg "github.com/zebodotdev/httpapi/caller"
+	authpkg "github.com/inttegro/httpapi/auth"
+	callerpkg "github.com/inttegro/httpapi/caller"
 )
 
 // AuthorizationKind identifies the authorization scheme an endpoint requires.

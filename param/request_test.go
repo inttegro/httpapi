@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	callerpkg "github.com/zebodotdev/httpapi/caller"
+	callerpkg "github.com/inttegro/httpapi/caller"
 )
 
 var (

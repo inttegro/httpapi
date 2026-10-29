@@ -7,9 +7,9 @@ import (
 	"strings"
 	"testing"
 
-	callerpkg "github.com/zebodotdev/httpapi/caller"
-	requestpkg "github.com/zebodotdev/httpapi/request"
-	responsepkg "github.com/zebodotdev/httpapi/response"
+	callerpkg "github.com/inttegro/httpapi/caller"
+	requestpkg "github.com/inttegro/httpapi/request"
+	responsepkg "github.com/inttegro/httpapi/response"
 )
 
 var (

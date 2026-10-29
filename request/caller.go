@@ -3,7 +3,7 @@ package request
 import (
 	"context"
 
-	callerpkg "github.com/zebodotdev/httpapi/caller"
+	callerpkg "github.com/inttegro/httpapi/caller"
 )
 
 type callerContextKey struct{}

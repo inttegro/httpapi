@@ -5,8 +5,8 @@ import (
 	"sort"
 	"strings"
 
-	callerpkg "github.com/zebodotdev/httpapi/caller"
-	"github.com/zebodotdev/httpapi/param"
+	callerpkg "github.com/inttegro/httpapi/caller"
+	"github.com/inttegro/httpapi/param"
 )
 
 // ResponseProjectionSchema is the immutable, flat prefix tree derived from an

@@ -3,8 +3,8 @@ package endpoint
 import (
 	"fmt"
 
-	authpkg "github.com/zebodotdev/httpapi/auth"
-	errresp "github.com/zebodotdev/httpapi/erreur"
+	authpkg "github.com/inttegro/httpapi/auth"
+	errresp "github.com/inttegro/httpapi/erreur"
 )
 
 const (

@@ -5,7 +5,7 @@ import (
 	"reflect"
 	"strings"
 
-	callerpkg "github.com/zebodotdev/httpapi/caller"
+	callerpkg "github.com/inttegro/httpapi/caller"
 )
 
 // EnvelopeShape defines a top-level JSON object response shape from named

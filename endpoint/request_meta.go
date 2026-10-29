@@ -1,6 +1,6 @@
 package endpoint
 
-import parampkg "github.com/zebodotdev/httpapi/param"
+import parampkg "github.com/inttegro/httpapi/param"
 
 const standardRequestMetaParameter = "request_meta"
 

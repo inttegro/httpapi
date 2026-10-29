@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	responsepkg "github.com/zebodotdev/httpapi/response"
+	responsepkg "github.com/inttegro/httpapi/response"
 )
 
 func TestMuxMountServesEndpointAndRecordsMetadata(t *testing.T) {

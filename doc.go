@@ -1,5 +1,5 @@
 // Package httpapi documents the module-level package layout for
-// github.com/zebodotdev/httpapi.
+// github.com/inttegro/httpapi.
 //
 // Runtime behavior intentionally lives in subpackages. Use endpoint for endpoint
 // definitions and groups, request for safe request parsing and authentication

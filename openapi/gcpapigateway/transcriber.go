@@ -6,10 +6,10 @@ import (
 	"strings"
 	"time"
 
-	endpointpkg "github.com/zebodotdev/httpapi/endpoint"
-	internalroute "github.com/zebodotdev/httpapi/openapi/internal/route"
-	internalschema "github.com/zebodotdev/httpapi/openapi/internal/schema"
-	"github.com/zebodotdev/httpapi/openapi/spec"
+	endpointpkg "github.com/inttegro/httpapi/endpoint"
+	internalroute "github.com/inttegro/httpapi/openapi/internal/route"
+	internalschema "github.com/inttegro/httpapi/openapi/internal/schema"
+	"github.com/inttegro/httpapi/openapi/spec"
 )
 
 const (

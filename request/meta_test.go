@@ -5,7 +5,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/zebodotdev/httpapi/param"
+	"github.com/inttegro/httpapi/param"
 )
 
 func TestPrepareMetaAttachesProjectionAndStripsEnvelope(t *testing.T) {

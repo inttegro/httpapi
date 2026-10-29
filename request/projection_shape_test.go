@@ -4,9 +4,9 @@ import (
 	"strings"
 	"testing"
 
-	callerpkg "github.com/zebodotdev/httpapi/caller"
-	"github.com/zebodotdev/httpapi/param"
-	responsepkg "github.com/zebodotdev/httpapi/response"
+	callerpkg "github.com/inttegro/httpapi/caller"
+	"github.com/inttegro/httpapi/param"
+	responsepkg "github.com/inttegro/httpapi/response"
 )
 
 var (

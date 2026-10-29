@@ -1,6 +1,6 @@
 package param
 
-import callerpkg "github.com/zebodotdev/httpapi/caller"
+import callerpkg "github.com/inttegro/httpapi/caller"
 
 // RequestSpec is the transcribable description of a JSON request parser.
 //

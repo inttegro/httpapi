@@ -10,8 +10,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/zebodotdev/httpapi/cost"
-	"github.com/zebodotdev/httpapi/response"
+	"github.com/inttegro/httpapi/cost"
+	"github.com/inttegro/httpapi/response"
 )
 
 func TestNewReqParsesBodyAndResetsReader(t *testing.T) {

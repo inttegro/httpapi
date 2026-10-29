@@ -4,8 +4,8 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/zebodotdev/httpapi/param"
-	"github.com/zebodotdev/httpapi/response"
+	"github.com/inttegro/httpapi/param"
+	"github.com/inttegro/httpapi/response"
 )
 
 func TestHandlerFromResponderRendersReturnedResponse(t *testing.T) {

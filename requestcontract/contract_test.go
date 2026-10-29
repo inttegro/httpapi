@@ -3,8 +3,8 @@ package requestcontract
 import (
 	"testing"
 
-	"github.com/zebodotdev/httpapi/endpoint"
-	"github.com/zebodotdev/httpapi/param"
+	"github.com/inttegro/httpapi/endpoint"
+	"github.com/inttegro/httpapi/param"
 )
 
 func TestRequestFingerprintIncludesAcceptedContentType(t *testing.T) {

@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/zebodotdev/httpapi/endpoint"
+	"github.com/inttegro/httpapi/endpoint"
 )
 
 const (

@@ -7,7 +7,7 @@ import (
 	"strings"
 	"sync"
 
-	errresp "github.com/zebodotdev/httpapi/erreur"
+	errresp "github.com/inttegro/httpapi/erreur"
 )
 
 const (

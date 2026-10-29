@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	responsepkg "github.com/zebodotdev/httpapi/response"
+	responsepkg "github.com/inttegro/httpapi/response"
 )
 
 const (

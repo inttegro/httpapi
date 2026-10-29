@@ -4,9 +4,9 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/zebodotdev/httpapi/openapi/spec"
-	"github.com/zebodotdev/httpapi/param"
-	"github.com/zebodotdev/httpapi/response"
+	"github.com/inttegro/httpapi/openapi/spec"
+	"github.com/inttegro/httpapi/param"
+	"github.com/inttegro/httpapi/response"
 )
 
 func TestFromParamShapeIncludesStringEnum(t *testing.T) {

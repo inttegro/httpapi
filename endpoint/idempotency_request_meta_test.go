@@ -7,9 +7,9 @@ import (
 	"strings"
 	"testing"
 
-	e "github.com/zebodotdev/httpapi/erreur"
-	"github.com/zebodotdev/httpapi/param"
-	"github.com/zebodotdev/httpapi/response"
+	e "github.com/inttegro/httpapi/erreur"
+	"github.com/inttegro/httpapi/param"
+	"github.com/inttegro/httpapi/response"
 )
 
 type noopIdempotencyStore struct{}

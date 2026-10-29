@@ -5,7 +5,7 @@ import (
 	"net/url"
 	"strings"
 
-	endpointpkg "github.com/zebodotdev/httpapi/endpoint"
+	endpointpkg "github.com/inttegro/httpapi/endpoint"
 )
 
 // Route is a resolved endpoint mount used by OpenAPI transcribers.

@@ -8,7 +8,7 @@ import (
 	"sync"
 	"time"
 
-	authpkg "github.com/zebodotdev/httpapi/auth"
+	authpkg "github.com/inttegro/httpapi/auth"
 )
 
 const (

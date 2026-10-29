@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	requestpkg "github.com/zebodotdev/httpapi/request"
-	responsepkg "github.com/zebodotdev/httpapi/response"
+	requestpkg "github.com/inttegro/httpapi/request"
+	responsepkg "github.com/inttegro/httpapi/response"
 )
 
 func TestEndpointControlDeniesWhenEvaluatorNotConfigured(t *testing.T) {

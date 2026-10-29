@@ -5,7 +5,7 @@ import (
 	"reflect"
 	"strings"
 
-	callerpkg "github.com/zebodotdev/httpapi/caller"
+	callerpkg "github.com/inttegro/httpapi/caller"
 )
 
 // ParamDefinition is a parameter or parameter group declaration that can be

@@ -15,10 +15,10 @@ import (
 	"strings"
 	"time"
 
-	authpkg "github.com/zebodotdev/httpapi/auth"
-	"github.com/zebodotdev/httpapi/cost"
-	e "github.com/zebodotdev/httpapi/erreur"
-	"github.com/zebodotdev/httpapi/response"
+	authpkg "github.com/inttegro/httpapi/auth"
+	"github.com/inttegro/httpapi/cost"
+	e "github.com/inttegro/httpapi/erreur"
+	"github.com/inttegro/httpapi/response"
 )
 
 const (

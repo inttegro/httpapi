@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	responsepkg "github.com/zebodotdev/httpapi/response"
+	responsepkg "github.com/inttegro/httpapi/response"
 )
 
 func TestDefineEndpointLimitsSpec(t *testing.T) {

@@ -3,7 +3,7 @@ package route
 import (
 	"testing"
 
-	endpointpkg "github.com/zebodotdev/httpapi/endpoint"
+	endpointpkg "github.com/inttegro/httpapi/endpoint"
 )
 
 func TestFromGroupResolvesMetadataAndPaths(t *testing.T) {

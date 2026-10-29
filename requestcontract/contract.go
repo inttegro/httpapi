@@ -8,9 +8,9 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/zebodotdev/httpapi/endpoint"
-	"github.com/zebodotdev/httpapi/param"
-	"github.com/zebodotdev/httpapi/request"
+	"github.com/inttegro/httpapi/endpoint"
+	"github.com/inttegro/httpapi/param"
+	"github.com/inttegro/httpapi/request"
 )
 
 // Contract is an executable endpoint request contract.

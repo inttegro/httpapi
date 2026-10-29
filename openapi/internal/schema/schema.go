@@ -3,9 +3,9 @@ package schema
 import (
 	"slices"
 
-	"github.com/zebodotdev/httpapi/openapi/spec"
-	parampkg "github.com/zebodotdev/httpapi/param"
-	responsepkg "github.com/zebodotdev/httpapi/response"
+	"github.com/inttegro/httpapi/openapi/spec"
+	parampkg "github.com/inttegro/httpapi/param"
+	responsepkg "github.com/inttegro/httpapi/response"
 )
 
 // FromParamShape translates a provider-neutral param shape into an OpenAPI

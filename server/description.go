@@ -3,8 +3,8 @@ package server
 import (
 	"strings"
 
-	"github.com/zebodotdev/httpapi/endpoint"
-	"github.com/zebodotdev/httpapi/openapi/spec"
+	"github.com/inttegro/httpapi/endpoint"
+	"github.com/inttegro/httpapi/openapi/spec"
 )
 
 // Description is the server-level API contract metadata used by document

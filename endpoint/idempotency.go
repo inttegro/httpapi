@@ -14,9 +14,9 @@ import (
 	"sync"
 	"time"
 
-	e "github.com/zebodotdev/httpapi/erreur"
-	requestpkg "github.com/zebodotdev/httpapi/request"
-	responsepkg "github.com/zebodotdev/httpapi/response"
+	e "github.com/inttegro/httpapi/erreur"
+	requestpkg "github.com/inttegro/httpapi/request"
+	responsepkg "github.com/inttegro/httpapi/response"
 )
 
 const (

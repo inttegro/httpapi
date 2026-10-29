@@ -3,7 +3,7 @@ package param
 import (
 	"context"
 
-	callerpkg "github.com/zebodotdev/httpapi/caller"
+	callerpkg "github.com/inttegro/httpapi/caller"
 )
 
 const requestValueKey = "httpapi.request"
