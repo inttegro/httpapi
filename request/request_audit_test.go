@@ -1,6 +1,8 @@
 package request
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -119,5 +121,102 @@ func TestReqMarshalJSONIncludesExplicitResponseCaller(t *testing.T) {
 	}
 	if raw["response_caller"] != "public-api" {
 		t.Fatalf("response_caller = %#v, want public-api", raw["response_caller"])
+	}
+}
+
+func TestReqMarshalJSONWritesAuthFailuresOnlyUnderAuth(t *testing.T) {
+	authenticationFailure := &AuthFailure{
+		Type:    authAuditTypeBearerKey,
+		Code:    "bearer_session_failed",
+		Message: "Bearer token could not be exchanged for a session",
+	}
+	authorizationFailure := &AuthFailure{
+		Type:    authAuditTypeEndpoint,
+		Code:    "capability_denied",
+		Message: "endpoint access denied",
+	}
+	req := Req{
+		AuthFailure:          authenticationFailure,
+		AuthorizationFailure: authorizationFailure,
+	}
+
+	data, err := json.Marshal(req)
+	if err != nil {
+		t.Fatalf("marshal request audit: %v", err)
+	}
+
+	var audit map[string]json.RawMessage
+	if err := json.Unmarshal(data, &audit); err != nil {
+		t.Fatalf("decode request audit: %v", err)
+	}
+	for _, name := range []string{"auth_failure", "authorization_failure"} {
+		if _, ok := audit[name]; ok {
+			t.Fatalf("request audit included root %q: %s", name, data)
+		}
+	}
+
+	var auth AuthAudit
+	if err := json.Unmarshal(audit["auth"], &auth); err != nil {
+		t.Fatalf("decode auth audit: %v", err)
+	}
+	if auth.Failure == nil || auth.Failure.Code != authenticationFailure.Code {
+		t.Fatalf("auth.failure = %#v, want code %q", auth.Failure, authenticationFailure.Code)
+	}
+	if auth.AuthenticationFailure == nil || auth.AuthenticationFailure.Code != authenticationFailure.Code {
+		t.Fatalf("auth.authentication_failure = %#v, want code %q", auth.AuthenticationFailure, authenticationFailure.Code)
+	}
+	if auth.AuthorizationFailure == nil || auth.AuthorizationFailure.Code != authorizationFailure.Code {
+		t.Fatalf("auth.authorization_failure = %#v, want code %q", auth.AuthorizationFailure, authorizationFailure.Code)
+	}
+}
+
+func TestReqMarshalJSONRecordsCredentialMetadataWithoutMaterial(t *testing.T) {
+	directToken := strings.Repeat("d", 64)
+	forwardedToken := strings.Repeat("f", 64)
+	httpReq := httptest.NewRequest(http.MethodPost, "/orders/lookup", strings.NewReader("{}"))
+	httpReq.Header.Set(authHeaderKey, "Bearer "+directToken)
+	httpReq.Header.Set(fwdAuthHeaderKey, "Bearer "+forwardedToken)
+	req := Req{Req: httpReq}
+
+	data, err := json.Marshal(req)
+	if err != nil {
+		t.Fatalf("marshal request audit: %v", err)
+	}
+
+	var audit struct {
+		Auth AuthAudit `json:"auth"`
+	}
+	if err := json.Unmarshal(data, &audit); err != nil {
+		t.Fatalf("decode request audit: %v", err)
+	}
+	if audit.Auth.Credential == nil {
+		t.Fatal("auth audit omitted presented credential metadata")
+	}
+	if !audit.Auth.Credential.Presented || audit.Auth.Credential.Scheme != "bearer" {
+		t.Fatalf("credential audit = %#v, want presented bearer", audit.Auth.Credential)
+	}
+	if audit.Auth.Credential.Source != fwdAuthHeaderKey {
+		t.Fatalf("credential source = %q, want %q", audit.Auth.Credential.Source, fwdAuthHeaderKey)
+	}
+	wantHash := sha256.Sum256([]byte(forwardedToken))
+	wantFingerprint := "sha256:" + hex.EncodeToString(wantHash[:])
+	if audit.Auth.Credential.Fingerprint != wantFingerprint {
+		t.Fatalf("credential fingerprint = %q, want %q", audit.Auth.Credential.Fingerprint, wantFingerprint)
+	}
+	if strings.Contains(string(data), directToken) || strings.Contains(string(data), forwardedToken) {
+		t.Fatalf("request audit leaked credential material: %s", data)
+	}
+}
+
+func TestReqAuthAuditDoesNotFingerprintShortCredentialMaterial(t *testing.T) {
+	httpReq := httptest.NewRequest(http.MethodPost, "/orders/lookup", strings.NewReader("{}"))
+	httpReq.Header.Set(authHeaderKey, "Bearer short-token")
+
+	audit := (&Req{Req: httpReq}).AuthAudit()
+	if audit.Credential == nil || !audit.Credential.Presented {
+		t.Fatal("auth audit omitted short presented credential metadata")
+	}
+	if audit.Credential.Fingerprint != "" {
+		t.Fatalf("short credential fingerprint = %q, want empty", audit.Credential.Fingerprint)
 	}
 }

@@ -1,6 +1,8 @@
 package request
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"strings"
 
@@ -12,6 +14,8 @@ const (
 	authAuditTypeNone      = authpkg.AuditTypeNone
 	authAuditTypeBearerKey = authpkg.AuditTypeBearerKey
 	authAuditTypeEndpoint  = authpkg.AuditTypeEndpoint
+
+	minCredentialFingerprintLength = 32
 )
 
 // ErrUnsupportedAuthorizationScheme reports that an Authorization header used a
@@ -25,6 +29,9 @@ type AuthAudit = authpkg.Audit
 // AuthFailure is an audit-safe description of authentication or authorization
 // failure.
 type AuthFailure = authpkg.Failure
+
+// CredentialAudit is the audit-safe description of credential presentation.
+type CredentialAudit = authpkg.CredentialAudit
 
 // SessionAudit is the redacted representation of a Session used in audits.
 type SessionAudit = authpkg.SessionAudit
@@ -61,10 +68,49 @@ func (r Req) authAudit() AuthAudit {
 		Authenticated:         authenticated,
 		SessionAuthorized:     sessionAuthorized,
 		Authorized:            sessionAuthorized && authorizationFailure == nil,
+		Credential:            credentialAudit(r),
 		Failure:               firstAuthFailure(r.AuthFailure, authorizationFailure),
 		AuthenticationFailure: r.AuthFailure,
 		AuthorizationFailure:  authorizationFailure,
 	}
+}
+
+// AuthAudit returns the audit-safe authentication and authorization view for r.
+func (r *Req) AuthAudit() AuthAudit {
+	if r == nil {
+		return AuthAudit{}
+	}
+	return r.authAudit()
+}
+
+func credentialAudit(r Req) *CredentialAudit {
+	if r.Req == nil {
+		return nil
+	}
+
+	authorization := strings.TrimSpace(r.Authorization())
+	if authorization == "" {
+		return nil
+	}
+
+	source := authHeaderKey
+	if strings.TrimSpace(r.Req.Header.Get(fwdAuthHeaderKey)) != "" {
+		source = fwdAuthHeaderKey
+	}
+
+	scheme, material, hasMaterial := strings.Cut(authorization, " ")
+	audit := &CredentialAudit{
+		Presented: true,
+		Scheme:    strings.ToLower(strings.TrimSpace(scheme)),
+		Source:    source,
+	}
+	material = strings.TrimSpace(material)
+	if hasMaterial && len(material) >= minCredentialFingerprintLength {
+		sum := sha256.Sum256([]byte(material))
+		audit.Fingerprint = "sha256:" + hex.EncodeToString(sum[:])
+	}
+
+	return audit
 }
 
 func authAuditType(r Req) string {
@@ -100,6 +146,20 @@ func authFailureFor(authType string, err error) AuthFailure {
 		Type:    authAuditTypeForAuthType(authType),
 		Code:    "authentication_failed",
 		Message: "authentication failed",
+	}
+	var provider interface{ AuthenticationFailure() AuthFailure }
+	if errors.As(err, &provider) {
+		provided := provider.AuthenticationFailure()
+		if strings.TrimSpace(provided.Type) == "" {
+			provided.Type = failure.Type
+		}
+		if strings.TrimSpace(provided.Code) == "" {
+			provided.Code = failure.Code
+		}
+		if strings.TrimSpace(provided.Message) == "" {
+			provided.Message = failure.Message
+		}
+		return provided
 	}
 
 	switch authType {

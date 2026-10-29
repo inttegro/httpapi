@@ -36,6 +36,10 @@ type Audit struct {
 	// applied.
 	Authorized bool `json:"authorized"`
 
+	// Credential records audit-safe facts about the presented Authorization
+	// value without retaining credential material.
+	Credential *CredentialAudit `json:"credential,omitempty"`
+
 	// Failure is the first authentication or authorization failure, convenient
 	// for consumers that display one failure object.
 	Failure *Failure `json:"failure,omitempty"`
@@ -47,6 +51,23 @@ type Audit struct {
 	// AuthorizationFailure captures failures after authentication, such as an
 	// endpoint requiring service credentials.
 	AuthorizationFailure *Failure `json:"authorization_failure,omitempty"`
+}
+
+// CredentialAudit records non-reversible metadata about a credential presented
+// on a request.
+type CredentialAudit struct {
+	// Presented reports that an Authorization value was present.
+	Presented bool `json:"presented"`
+
+	// Scheme is the normalized Authorization scheme.
+	Scheme string `json:"scheme,omitempty"`
+
+	// Source is the header that supplied the effective Authorization value.
+	Source string `json:"source,omitempty"`
+
+	// Fingerprint is an optional SHA-256 digest of sufficiently long credential
+	// material. It is intended only for correlation and is never reversible.
+	Fingerprint string `json:"fingerprint,omitempty"`
 }
 
 // Failure is an audit-safe description of an authentication or authorization

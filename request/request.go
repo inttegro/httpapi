@@ -131,12 +131,12 @@ type Req struct {
 	metaPrepared bool
 
 	// AuthFailure records credential parsing or authentication failure details
-	// for audit output.
-	AuthFailure *AuthFailure `json:"auth_failure,omitempty"`
+	// for nested auth audit output while retaining the runtime failure state.
+	AuthFailure *AuthFailure `json:"-"`
 
 	// AuthorizationFailure records endpoint access-policy failure details for
-	// audit output.
-	AuthorizationFailure *AuthFailure `json:"authorization_failure,omitempty"`
+	// nested auth audit output while retaining the runtime failure state.
+	AuthorizationFailure *AuthFailure `json:"-"`
 
 	costRecorder *cost.Recorder
 }
@@ -173,47 +173,43 @@ func (r Req) MarshalJSON() ([]byte, error) {
 	res := r.auditResponse()
 
 	return json.Marshal(struct {
-		URL                  string         `json:"url"`
-		AppID                string         `json:"application_id"`
-		SessID               string         `json:"session_id,omitempty"`
-		IdemKey              string         `json:"idempotency_key,omitzero"`
-		RecdAt               time.Time      `json:"received_at"`
-		ExpiresAt            time.Time      `json:"expires_at"`
-		ExpiresAtUnix        int64          `json:"expires_at_unix"`
-		Header               http.Header    `json:"header,omitempty"`
-		Req                  *RequestAudit  `json:"request,omitempty"`
-		Body                 any            `json:"body,omitempty"`
-		Res                  *ResponseAudit `json:"response,omitempty"`
-		Err                  *e.Error       `json:"error,omitempty"`
-		Dur                  time.Duration  `json:"duration"`
-		ID                   string         `json:"id"`
-		Caller               Caller         `json:"caller"`
-		ResponseCaller       Caller         `json:"response_caller,omitzero"`
-		Auth                 AuthAudit      `json:"auth"`
-		AuthFailure          *AuthFailure   `json:"auth_failure,omitempty"`
-		AuthorizationFailure *AuthFailure   `json:"authorization_failure,omitempty"`
-		Session              *SessionAudit  `json:"session,omitempty"`
+		URL            string         `json:"url"`
+		AppID          string         `json:"application_id"`
+		SessID         string         `json:"session_id,omitempty"`
+		IdemKey        string         `json:"idempotency_key,omitzero"`
+		RecdAt         time.Time      `json:"received_at"`
+		ExpiresAt      time.Time      `json:"expires_at"`
+		ExpiresAtUnix  int64          `json:"expires_at_unix"`
+		Header         http.Header    `json:"header,omitempty"`
+		Req            *RequestAudit  `json:"request,omitempty"`
+		Body           any            `json:"body,omitempty"`
+		Res            *ResponseAudit `json:"response,omitempty"`
+		Err            *e.Error       `json:"error,omitempty"`
+		Dur            time.Duration  `json:"duration"`
+		ID             string         `json:"id"`
+		Caller         Caller         `json:"caller"`
+		ResponseCaller Caller         `json:"response_caller,omitzero"`
+		Auth           AuthAudit      `json:"auth"`
+		Session        *SessionAudit  `json:"session,omitempty"`
 	}{
-		URL:                  reqURL,
-		AppID:                r.AppID,
-		SessID:               r.SessID,
-		IdemKey:              auditSecret(r.IdemKey),
-		RecdAt:               r.RecdAt,
-		ExpiresAt:            r.ExpiresAt,
-		ExpiresAtUnix:        r.ExpiresAtUnix,
-		Body:                 bdy,
-		Header:               safeh,
-		Req:                  safeReq,
-		Res:                  res,
-		Err:                  r.Err,
-		Dur:                  r.Dur,
-		ID:                   r.ID,
-		Caller:               r.Caller,
-		ResponseCaller:       r.responseCaller,
-		Auth:                 r.authAudit(),
-		AuthFailure:          r.AuthFailure,
-		AuthorizationFailure: r.AuthorizationFailure,
-		Session:              sessionAudit(r.Sess),
+		URL:            reqURL,
+		AppID:          r.AppID,
+		SessID:         r.SessID,
+		IdemKey:        auditSecret(r.IdemKey),
+		RecdAt:         r.RecdAt,
+		ExpiresAt:      r.ExpiresAt,
+		ExpiresAtUnix:  r.ExpiresAtUnix,
+		Body:           bdy,
+		Header:         safeh,
+		Req:            safeReq,
+		Res:            res,
+		Err:            r.Err,
+		Dur:            r.Dur,
+		ID:             r.ID,
+		Caller:         r.Caller,
+		ResponseCaller: r.responseCaller,
+		Auth:           r.authAudit(),
+		Session:        sessionAudit(r.Sess),
 	})
 }
 
