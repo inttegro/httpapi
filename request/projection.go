@@ -242,7 +242,7 @@ func validatePropertyPath(path string) error {
 	if path == "" {
 		return fmt.Errorf("property path is required")
 	}
-	for _, segment := range strings.Split(path, ".") {
+	for segment := range strings.SplitSeq(path, ".") {
 		if err := validatePropertyName(segment); err != nil {
 			return fmt.Errorf("invalid property path %q: %w", path, err)
 		}
