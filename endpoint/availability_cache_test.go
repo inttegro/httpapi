@@ -3,6 +3,7 @@ package endpoint
 import (
 	"context"
 	"errors"
+	"strconv"
 	"testing"
 	"time"
 )
@@ -66,5 +67,60 @@ func TestCachedAvailabilityEvaluatorRetainsStaleDecisionOnError(t *testing.T) {
 	}
 	if decision.Available || decision.Reason != "incident" {
 		t.Fatalf("stale decision = %#v", decision)
+	}
+}
+
+func TestCachedAvailabilityEvaluatorSeparatesScopedSubjects(t *testing.T) {
+	calls := 0
+	cache := NewCachedAvailabilityEvaluator(AvailabilityEvaluatorFunc(func(
+		_ context.Context,
+		evaluation EndpointAvailabilityEvaluation,
+	) (EndpointAvailabilityDecision, error) {
+		calls++
+		return EndpointAvailabilityDecision{
+			Available: evaluation.Subject.AppID != "app_blocked",
+		}, nil
+	}), time.Minute)
+
+	for _, appID := range []string{"app_allowed", "app_blocked", "app_allowed"} {
+		decision, err := cache.EvaluateEndpointAvailability(context.Background(), EndpointAvailabilityEvaluation{
+			OperationID: "createWidget",
+			Phase:       EndpointAvailabilityPhaseScoped,
+			Subject:     EndpointAvailabilitySubject{AppID: appID},
+		})
+		if err != nil {
+			t.Fatalf("evaluate %s: %v", appID, err)
+		}
+		if decision.Available != (appID == "app_allowed") {
+			t.Fatalf("decision for %s = %#v", appID, decision)
+		}
+	}
+	if calls != 2 {
+		t.Fatalf("evaluator calls = %d, want 2 distinct subject lookups", calls)
+	}
+}
+
+func TestCachedAvailabilityEvaluatorBoundsScopedSubjectEntries(t *testing.T) {
+	cache := NewCachedAvailabilityEvaluator(AvailabilityEvaluatorFunc(func(
+		context.Context,
+		EndpointAvailabilityEvaluation,
+	) (EndpointAvailabilityDecision, error) {
+		return EndpointAvailabilityDecision{Available: true}, nil
+	}), time.Minute)
+
+	for index := range maxAvailabilityCacheEntries + 1 {
+		_, err := cache.EvaluateEndpointAvailability(context.Background(), EndpointAvailabilityEvaluation{
+			OperationID: "createWidget",
+			Phase:       EndpointAvailabilityPhaseScoped,
+			Subject: EndpointAvailabilitySubject{
+				AppID: "app_" + strconv.Itoa(index),
+			},
+		})
+		if err != nil {
+			t.Fatalf("evaluate scoped subject %d: %v", index, err)
+		}
+	}
+	if len(cache.entries) != maxAvailabilityCacheEntries {
+		t.Fatalf("cache entries = %d, want %d", len(cache.entries), maxAvailabilityCacheEntries)
 	}
 }

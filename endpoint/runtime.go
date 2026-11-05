@@ -421,7 +421,7 @@ func (endpoint Endpoint) httpHandler() http.HandlerFunc {
 			return
 		}
 
-		if availabilityErr := endpoint.availabilityError(req); availabilityErr != nil {
+		if availabilityErr := endpoint.globalAvailabilityError(req); availabilityErr != nil {
 			completionState.outcome = CompletionOutcomeUnavailable
 			responsepkg.RenderErr(req, availabilityErr)
 			req.Dur = time.Since(startedAt)
@@ -516,6 +516,9 @@ func (endpoint Endpoint) httpHandler() http.HandlerFunc {
 		if accessErr := endpoint.accessError(req); accessErr != nil {
 			completionState.outcome = CompletionOutcomeAccessDenied
 			responsepkg.RenderErr(req, accessErr)
+		} else if availabilityErr := endpoint.scopedAvailabilityError(req); availabilityErr != nil {
+			completionState.outcome = CompletionOutcomeUnavailable
+			responsepkg.RenderErr(req, availabilityErr)
 		} else if requestAcceptsMeta(ct, endpoint.accepts) {
 			if metaErr := req.PrepareMeta(); metaErr != nil {
 				responsepkg.RenderParamError(req, metaErr)

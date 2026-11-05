@@ -11,7 +11,16 @@ import (
 
 const endpointUnavailableCode = "endpoint_unavailable"
 
-// EndpointAvailabilitySpec configures global availability for an endpoint.
+const (
+	// EndpointAvailabilityPhaseGlobal evaluates the operation-wide emergency
+	// breaker before request parsing or authentication.
+	EndpointAvailabilityPhaseGlobal = "global"
+	// EndpointAvailabilityPhaseScoped evaluates caller, app, and organization
+	// restrictions after trusted request identity has been established.
+	EndpointAvailabilityPhaseScoped = "scoped"
+)
+
+// EndpointAvailabilitySpec configures operational availability for an endpoint.
 type EndpointAvailabilitySpec struct {
 	// Protected prevents the endpoint from being taken offline through the
 	// global control plane. Use it for health and control-plane routes.
@@ -22,18 +31,31 @@ type endpointAvailabilityPolicy struct {
 	protected bool
 }
 
-// EndpointAvailabilityEvaluation identifies the operation whose global
-// availability must be checked before its request body or handler is run.
-// OperationID is the stable control-plane key; aliases therefore share the
-// canonical endpoint's availability state.
+// EndpointAvailabilityEvaluation identifies the operation whose availability
+// must be checked. The global phase runs before request parsing; the scoped
+// phase runs after trusted caller and session identity have been established.
+// OperationID is the stable control-plane key, so aliases share the canonical
+// endpoint's availability state.
 type EndpointAvailabilityEvaluation struct {
 	OperationID string
 	Method      HttpMethod
 	Pattern     string
 	RequestPath string
+	Phase       string
+	Subject     EndpointAvailabilitySubject
 }
 
-// EndpointAvailabilityDecision is an audit-safe global availability decision.
+// EndpointAvailabilitySubject is the provider-neutral identity available to a
+// scoped endpoint availability decision. Empty fields are deliberately
+// omitted: public requests may have only a caller, while authenticated
+// requests may additionally identify an app and organization.
+type EndpointAvailabilitySubject struct {
+	Caller         string
+	AppID          string
+	OrganizationID string
+}
+
+// EndpointAvailabilityDecision is an audit-safe availability decision.
 // An unavailable decision remains in force until the evaluator reports the
 // operation available again or ExpiresAt passes.
 type EndpointAvailabilityDecision struct {
@@ -43,8 +65,8 @@ type EndpointAvailabilityDecision struct {
 	ExpiresAt time.Time
 }
 
-// AvailabilityEvaluator decides whether an endpoint operation is globally
-// available. It is intentionally separate from per-app endpoint controls.
+// AvailabilityEvaluator decides whether an endpoint operation is available in
+// the requested phase and subject scope. Storage remains service-owned.
 type AvailabilityEvaluator interface {
 	EvaluateEndpointAvailability(
 		context.Context,
@@ -110,7 +132,15 @@ func currentAvailabilityEvaluator() AvailabilityEvaluator {
 	return availabilityEvaluator
 }
 
-func (e Endpoint) availabilityError(r *Req) *errresp.Error {
+func (e Endpoint) globalAvailabilityError(r *Req) *errresp.Error {
+	return e.availabilityError(r, EndpointAvailabilityPhaseGlobal)
+}
+
+func (e Endpoint) scopedAvailabilityError(r *Req) *errresp.Error {
+	return e.availabilityError(r, EndpointAvailabilityPhaseScoped)
+}
+
+func (e Endpoint) availabilityError(r *Req, phase string) *errresp.Error {
 	operationID := strings.TrimSpace(e.Operation().ID)
 	if operationID == "" || !e.GloballyControllable() {
 		return nil
@@ -120,11 +150,15 @@ func (e Endpoint) availabilityError(r *Req) *errresp.Error {
 		OperationID: operationID,
 		Method:      e.Method(),
 		Pattern:     e.Pattern(),
+		Phase:       phase,
 	}
 	ctx := context.Background()
 	if r != nil && r.Req != nil {
 		ctx = r.Req.Context()
 		evaluation.RequestPath = r.Req.URL.Path
+	}
+	if phase == EndpointAvailabilityPhaseScoped {
+		evaluation.Subject = availabilitySubject(r)
 	}
 
 	decision, err := currentAvailabilityEvaluator().EvaluateEndpointAvailability(ctx, evaluation)
@@ -145,6 +179,22 @@ func (e Endpoint) availabilityError(r *Req) *errresp.Error {
 		"endpoint is temporarily unavailable",
 		"this API operation is temporarily offline. retry later or contact support if the problem persists.",
 	)
+}
+
+func availabilitySubject(r *Req) EndpointAvailabilitySubject {
+	if r == nil {
+		return EndpointAvailabilitySubject{}
+	}
+
+	subject := EndpointAvailabilitySubject{}
+	if caller := r.RequestCaller(); caller.Defined() {
+		subject.Caller = strings.TrimSpace(caller.Name())
+	}
+	if r.Sess != nil && r.Sess.Authorized() {
+		subject.AppID = strings.TrimSpace(r.Sess.App.ID)
+		subject.OrganizationID = strings.TrimSpace(r.Sess.OrganizationID)
+	}
+	return subject
 }
 
 // GloballyControllable reports whether the endpoint may be taken offline by

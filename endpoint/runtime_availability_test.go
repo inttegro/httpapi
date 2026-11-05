@@ -9,6 +9,8 @@ import (
 	"testing"
 	"time"
 
+	callerpkg "github.com/inttegro/httpapi/caller"
+	requestpkg "github.com/inttegro/httpapi/request"
 	responsepkg "github.com/inttegro/httpapi/response"
 )
 
@@ -94,6 +96,53 @@ func TestEndpointAvailabilityEvaluatorFailureFailsOpen(t *testing.T) {
 
 	if rec.Code != http.StatusAccepted || !called {
 		t.Fatalf("status = %d called = %t; body=%s", rec.Code, called, rec.Body.String())
+	}
+}
+
+func TestEndpointAvailabilityBlocksAuthenticatedScopedSubject(t *testing.T) {
+	var evaluations []EndpointAvailabilityEvaluation
+	restore := ConfigureAvailabilityEvaluator(AvailabilityEvaluatorFunc(func(
+		_ context.Context,
+		input EndpointAvailabilityEvaluation,
+	) (EndpointAvailabilityDecision, error) {
+		evaluations = append(evaluations, input)
+		return EndpointAvailabilityDecision{
+			Available: input.Phase != EndpointAvailabilityPhaseScoped || input.Subject.AppID != "app_blocked",
+			Provider:  "test",
+		}, nil
+	}))
+	defer restore()
+
+	var called bool
+	req := httptest.NewRequest(POST, "/widgets", strings.NewReader(`{}`))
+	req.Header.Set(contentTypeHeaderKey, ApplicationJson)
+	req = req.WithContext(requestpkg.ContextWithCaller(
+		requestpkg.ContextWithSession(req.Context(), &requestpkg.Session{
+			ID:             "session_123",
+			App:            requestpkg.App{ID: "app_blocked"},
+			OrganizationID: "org_123",
+			InitiatedAt:    time.Now().Add(-time.Minute),
+			ExpiresAt:      time.Now().Add(time.Minute),
+			MultiUse:       true,
+			AuthMode:       requestpkg.SessionAuthModeBearer,
+		}),
+		callerpkg.Define("dashboard"),
+	))
+	rec := httptest.NewRecorder()
+	availabilityTestEndpoint(&called, "createWidget").Handler()(rec, req)
+
+	if rec.Code != http.StatusServiceUnavailable || called {
+		t.Fatalf("status = %d called = %t; body=%s", rec.Code, called, rec.Body.String())
+	}
+	if len(evaluations) != 2 {
+		t.Fatalf("evaluations = %#v, want global and scoped", evaluations)
+	}
+	scoped := evaluations[1]
+	if scoped.Phase != EndpointAvailabilityPhaseScoped ||
+		scoped.Subject.Caller != "dashboard" ||
+		scoped.Subject.AppID != "app_blocked" ||
+		scoped.Subject.OrganizationID != "org_123" {
+		t.Fatalf("scoped evaluation = %#v", scoped)
 	}
 }
 
