@@ -28,8 +28,8 @@ var ErrControlEvaluatorNotConfigured = errors.New("httpapi: control_evaluator_no
 // EndpointControlSpec declares a control that must allow the active request
 // before the endpoint handler can run.
 type EndpointControlSpec struct {
-	Kind string
-	Key  string
+	Kind string `json:"kind"`
+	Key  string `json:"key"`
 }
 
 // EndpointControlEvaluation is passed to a service-owned control evaluator.

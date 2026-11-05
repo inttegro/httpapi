@@ -66,6 +66,7 @@ type Endpoint struct {
 	timeout           endpointTimeoutPolicy
 	limits            endpointLimitsPolicy
 	controls          endpointControlPolicy
+	availability      endpointAvailabilityPolicy
 	requestContract   RequestContract
 	responseContracts []ResponseContract
 	projectionIndex   *lazyResponseProjectionSchema
@@ -412,6 +413,23 @@ func (endpoint Endpoint) httpHandler() http.HandlerFunc {
 			if err != nil {
 				logr.Printf(
 					"failed to write unsupported content type response:"+
+						" request_id=%s method=%s path=%s error=%v",
+					req.ID, req.Method(), req.Path(), err,
+				)
+			}
+
+			return
+		}
+
+		if availabilityErr := endpoint.availabilityError(req); availabilityErr != nil {
+			completionState.outcome = CompletionOutcomeUnavailable
+			responsepkg.RenderErr(req, availabilityErr)
+			req.Dur = time.Since(startedAt)
+			written, err := writeRenderedResponse(w, req, timeout)
+			responseSizeBytes = written
+			if err != nil {
+				logr.Printf(
+					"failed to write endpoint unavailable response:"+
 						" request_id=%s method=%s path=%s error=%v",
 					req.ID, req.Method(), req.Path(), err,
 				)

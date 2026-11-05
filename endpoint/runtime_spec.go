@@ -72,6 +72,11 @@ type EndpointSpec struct {
 	// endpoint handler can run.
 	Controls []EndpointControlSpec
 
+	// Availability configures global endpoint availability behavior. Protected
+	// endpoints remain visible in operational catalogs but cannot be taken
+	// offline through the global availability control plane.
+	Availability EndpointAvailabilitySpec
+
 	// Request describes the request payload accepted by the endpoint.
 	Request RequestContract
 
@@ -166,6 +171,9 @@ func endpointFromSpec(spec EndpointSpec) Endpoint {
 		},
 		controls: endpointControlPolicy{
 			controls: normalizeEndpointControlSpecs(spec.Controls),
+		},
+		availability: endpointAvailabilityPolicy{
+			protected: spec.Availability.Protected,
 		},
 		requestContract:   requestContract,
 		responseContracts: responseContracts,

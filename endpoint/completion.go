@@ -46,6 +46,10 @@ const (
 	// the request before the application handler ran.
 	CompletionOutcomeAccessDenied CompletionOutcome = "access_denied"
 
+	// CompletionOutcomeUnavailable reports that global endpoint availability
+	// policy took the operation offline before the application handler ran.
+	CompletionOutcomeUnavailable CompletionOutcome = "unavailable"
+
 	// CompletionOutcomeTimedOut reports that the endpoint handler exceeded its
 	// configured runtime timeout before producing a response.
 	CompletionOutcomeTimedOut CompletionOutcome = "timed_out"
