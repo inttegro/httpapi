@@ -17,6 +17,7 @@ import (
 
 	authpkg "github.com/inttegro/httpapi/auth"
 	"github.com/inttegro/httpapi/cost"
+	edgepkg "github.com/inttegro/httpapi/edge"
 	e "github.com/inttegro/httpapi/erreur"
 	"github.com/inttegro/httpapi/response"
 )
@@ -121,6 +122,10 @@ type Req struct {
 	// middleware or tests.
 	Caller Caller `json:"caller"`
 
+	// Edge is optional provider-specific request evidence extracted by the
+	// configured edge provider. It is exposed only through audit serialization.
+	Edge *edgepkg.Audit `json:"-"`
+
 	// responseCaller is an optional, narrower caller used only for response
 	// projection. It is exposed in the redacted audit shape by MarshalJSON.
 	responseCaller Caller
@@ -182,6 +187,7 @@ func (r Req) MarshalJSON() ([]byte, error) {
 		ExpiresAtUnix  int64          `json:"expires_at_unix"`
 		Header         http.Header    `json:"header,omitempty"`
 		Req            *RequestAudit  `json:"request,omitempty"`
+		Edge           *edgepkg.Audit `json:"edge,omitempty"`
 		Body           any            `json:"body,omitempty"`
 		Res            *ResponseAudit `json:"response,omitempty"`
 		Err            *e.Error       `json:"error,omitempty"`
@@ -202,6 +208,7 @@ func (r Req) MarshalJSON() ([]byte, error) {
 		Body:           bdy,
 		Header:         safeh,
 		Req:            safeReq,
+		Edge:           r.Edge,
 		Res:            res,
 		Err:            r.Err,
 		Dur:            r.Dur,
@@ -817,6 +824,7 @@ func NewReqWithError(req *http.Request) (*Req, error) {
 		Req:           req,
 		Body:          body,
 		ID:            genReqID(),
+		Edge:          edgepkg.Extract(currentEdgeProvider(), req),
 	}
 	r.ensureCostRecorder()
 	if session := SessionFromContext(req.Context()); session != nil {

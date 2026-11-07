@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	callerpkg "github.com/inttegro/httpapi/caller"
+	cloudflareedge "github.com/inttegro/httpapi/edge/cloudflare"
 	responsepkg "github.com/inttegro/httpapi/response"
 )
 
@@ -95,6 +96,76 @@ func TestReqMarshalJSONRedactsAuditSensitiveData(t *testing.T) {
 	}
 	if response["body_present"] != true {
 		t.Fatalf("response body presence missing: %s", data)
+	}
+}
+
+func TestReqMarshalJSONCapturesBoundedCloudflareCorrelation(t *testing.T) {
+	restore := ConfigureEdgeProvider(cloudflareedge.Provider{})
+	t.Cleanup(restore)
+
+	req := httptest.NewRequest(http.MethodGet, "https://api.inttegro.com/orders", nil)
+	req.Header.Set("CF-Ray", "94E8AC88A48E1C5D-DUB")
+	req.Header.Set("CF-Connecting-IP", "2001:db8::1")
+	req.Header.Set("CF-IPCountry", "ie")
+	req.Header.Set("CF-Visitor", `{"scheme":"https","secret":"must-not-persist"}`)
+
+	data, err := json.Marshal(NewReq(req))
+	if err != nil {
+		t.Fatalf("marshal request audit: %v", err)
+	}
+
+	var audit struct {
+		Edge *struct {
+			Provider   string                  `json:"provider"`
+			Cloudflare cloudflareedge.Evidence `json:"cloudflare"`
+		} `json:"edge"`
+	}
+	if err := json.Unmarshal(data, &audit); err != nil {
+		t.Fatalf("decode request audit: %v", err)
+	}
+	if audit.Edge == nil || audit.Edge.Provider != "cloudflare" {
+		t.Fatalf("cloudflare edge evidence missing: %s", data)
+	}
+	if audit.Edge.Cloudflare.RayID != "94e8ac88a48e1c5d" || audit.Edge.Cloudflare.Colo != "DUB" {
+		t.Fatalf("cloudflare ray = %#v", audit.Edge.Cloudflare)
+	}
+	if audit.Edge.Cloudflare.ConnectingIP != "2001:db8::1" || audit.Edge.Cloudflare.Country != "IE" {
+		t.Fatalf("cloudflare client evidence = %#v", audit.Edge.Cloudflare)
+	}
+	if audit.Edge.Cloudflare.VisitorScheme != "https" {
+		t.Fatalf("cloudflare visitor evidence = %#v", audit.Edge.Cloudflare)
+	}
+	if strings.Contains(string(data), "must-not-persist") || strings.Contains(string(data), "CF-Visitor") {
+		t.Fatalf("request audit included arbitrary Cloudflare headers: %s", data)
+	}
+}
+
+func TestConfiguredCloudflareProviderRequiresValidRayID(t *testing.T) {
+	restore := ConfigureEdgeProvider(cloudflareedge.Provider{})
+	t.Cleanup(restore)
+
+	req := httptest.NewRequest(http.MethodGet, "https://api.inttegro.com/orders", nil)
+	req.Header.Set("CF-Ray", "caller-controlled")
+	req.Header.Set("CF-Connecting-IP", "203.0.113.10")
+
+	if got := NewReq(req).Edge; got != nil {
+		t.Fatalf("Edge = %#v, want nil", got)
+	}
+}
+
+func TestEdgeEvidenceIsOptIn(t *testing.T) {
+	restore := ConfigureEdgeProvider(nil)
+	t.Cleanup(restore)
+
+	req := httptest.NewRequest(http.MethodGet, "https://api.inttegro.com/orders", nil)
+	req.Header.Set("CF-Ray", "94E8AC88A48E1C5D-DUB")
+
+	data, err := json.Marshal(NewReq(req))
+	if err != nil {
+		t.Fatalf("marshal request audit: %v", err)
+	}
+	if strings.Contains(string(data), `"edge"`) || strings.Contains(string(data), "cloudflare") {
+		t.Fatalf("unconfigured request audit included edge evidence: %s", data)
 	}
 }
 

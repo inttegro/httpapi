@@ -23,5 +23,7 @@
 // Req audit serialization is intentionally conservative. Authorization headers,
 // idempotency keys, request bodies, and response bodies are redacted or
 // summarized so services can persist request audit records without leaking
-// common credential or payload material.
+// common credential or payload material. Edge evidence is absent unless the
+// application explicitly installs an edge.Provider; provider-specific evidence
+// is then serialized beneath a provider-discriminated edge envelope.
 package request

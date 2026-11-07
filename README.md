@@ -37,6 +37,8 @@ Use the narrow package that owns the behavior you need:
 - `caller` defines stable labels for trusted request sources.
 - `request` turns an incoming `*http.Request` into a safe `Req` with buffered
   body, request ID, caller, session, and redacted audit output.
+- `edge` defines an optional, provider-discriminated request-evidence envelope;
+  provider adapters such as `edge/cloudflare` are installed explicitly.
 - `cost` records provider-neutral usage units that completion sinks can price or
   export outside httpapi.
 - `param` parses JSON request bodies into endpoint-owned domain parameters.
@@ -861,6 +863,19 @@ restore := endpoint.ConfigureAuditSink(endpoint.AuditSinkFunc(
 ))
 defer restore()
 ```
+
+Optionally install an edge provider when your ingress makes that provider's
+headers trustworthy:
+
+```go
+restoreEdge := request.ConfigureEdgeProvider(cloudflare.Provider{})
+defer restoreEdge()
+```
+
+Without this configuration, request audits contain no edge evidence. With the
+Cloudflare adapter, the audit uses `edge.provider` as a discriminator and keeps
+Cloudflare-specific fields beneath `edge.cloudflare`. Other adapters can use
+their own discriminator and payload without changing the shared request shape.
 
 Configure idempotency before mounting idempotent endpoints:
 
