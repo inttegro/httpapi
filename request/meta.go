@@ -69,17 +69,34 @@ func (r *Req) PrepareMeta() *param.Error {
 		return nil
 	}
 	body := bytes.TrimSpace(r.Body)
-	if len(body) == 0 || !bytes.Contains(body, []byte(`"request_meta"`)) {
+	if len(body) == 0 || (!bytes.Contains(body, []byte(`"request_meta"`)) &&
+		!bytes.Contains(body, []byte(`"idempotency_key"`))) {
 		r.metaPrepared = true
 		return nil
 	}
 	parser := requestMetaParser{req: r}
 	parser.decodeEnvelope()
+	parser.rejectTopLevelIdempotencyKey()
 	parser.extractMeta()
 	parser.parseMeta()
 	parser.stripMeta()
 	parser.attach()
 	return parser.err
+}
+
+func (parser *requestMetaParser) rejectTopLevelIdempotencyKey() {
+	if parser.err != nil || parser.envelope == nil {
+		return
+	}
+	if _, ok := parser.envelope[idempotencyKeyMetaName]; !ok {
+		return
+	}
+	parser.err = param.NewError(
+		idempotencyKeyMetaName,
+		param.CodeUnexpected,
+		fmt.Sprintf("`%s` is not supported; use `%s.%s` or the `Idempotency-Key` header", idempotencyKeyMetaName, requestMetaName, idempotencyKeyMetaName),
+		nil,
+	)
 }
 
 // RequestMeta returns a defensive copy of the standard request metadata.
