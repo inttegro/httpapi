@@ -347,9 +347,6 @@ func idempotencyKeyFromRequest(r *Req) (string, *e.ErrInvalidParam) {
 	if perr != nil {
 		return "", perr
 	}
-	if perr := rejectTopLevelIdempotencyKey(r.Body); perr != nil {
-		return "", perr
-	}
 
 	metaKey, perr := normalizeIdempotencyKey(
 		r.RequestMeta().IdempotencyKey,
@@ -366,20 +363,6 @@ func idempotencyKeyFromRequest(r *Req) (string, *e.ErrInvalidParam) {
 		return headerKey, nil
 	}
 	return metaKey, nil
-}
-
-func rejectTopLevelIdempotencyKey(body []byte) *e.ErrInvalidParam {
-	if len(strings.TrimSpace(string(body))) == 0 {
-		return nil
-	}
-	var raw map[string]json.RawMessage
-	if err := json.Unmarshal(body, &raw); err != nil {
-		return e.InvalidBodyErr()
-	}
-	if _, ok := raw["idempotency_key"]; ok {
-		return unsupportedIdempotencyKeyErr("idempotency_key")
-	}
-	return nil
 }
 
 func idempotencyKeyFromSession(r *Req) (string, *e.ErrInvalidParam) {
@@ -515,14 +498,6 @@ func idempotencyMismatchErr(first, second string) *e.ErrInvalidParam {
 		"idempotency_key",
 		fmt.Sprintf("`%s` and `%s` must match when both are present", first, second),
 		"idempotency_key_mismatch",
-	)
-}
-
-func unsupportedIdempotencyKeyErr(param string) *e.ErrInvalidParam {
-	return idempotencyParamErr(
-		param,
-		fmt.Sprintf("`%s` is not supported. use `request_meta.idempotency_key` or the `Idempotency-Key` header", param),
-		"idempotency_key_unsupported",
 	)
 }
 

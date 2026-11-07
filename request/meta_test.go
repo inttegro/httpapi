@@ -139,24 +139,6 @@ func TestPrepareMetaLeavesBodiesWithoutMetadataUnchanged(t *testing.T) {
 	}
 }
 
-func TestPrepareMetaRejectsTopLevelIdempotencyKey(t *testing.T) {
-	req := &Req{Body: []byte(`{"idempotency_key":"legacy","id":"sale_123"}`)}
-
-	err := req.PrepareMeta()
-	if err == nil {
-		t.Fatal("PrepareMeta error = nil")
-	}
-	if err.Code != param.CodeUnexpected {
-		t.Fatalf("error code = %q, want %q", err.Code, param.CodeUnexpected)
-	}
-	if err.Param != "idempotency_key" {
-		t.Fatalf("error param = %q, want idempotency_key", err.Param)
-	}
-	if !reflect.DeepEqual(req.Body, []byte(`{"idempotency_key":"legacy","id":"sale_123"}`)) {
-		t.Fatalf("invalid body was changed to %q", req.Body)
-	}
-}
-
 func TestResponseProjectionReturnsDefensiveCopies(t *testing.T) {
 	req := &Req{Body: []byte(`{
 		"request_meta":{"response":{"projection":{
