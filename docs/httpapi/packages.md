@@ -25,4 +25,4 @@ The module root is documentation-only. Runtime behavior lives in focused package
 
 Most services begin with `endpoint`, `param`, `response`, and `server`, then add `request` and `caller` when authentication or caller-specific behavior is required.
 
-Use [pkg.go.dev](https://pkg.go.dev/github.com/inttegro/httpapi) for exported Go symbols. Use these guides for integration decisions, and the [versioned specification](/specification) for portable behavior.
+Use [pkg.go.dev](https://pkg.go.dev/github.com/inttegro/httpapi) for exported Go symbols. Use these guides for integration decisions, and the [versioned specification](/httpapi/specification) for portable behavior.

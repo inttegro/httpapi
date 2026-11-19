@@ -108,6 +108,6 @@ Try an empty name. The handler will not run; HTTPAPI returns a structured parame
 
 ## What to add next
 
-1. Replace the example map with a declared [response shape](/response-projection).
-2. Add authorization, timeouts, limits, and operation metadata in the [endpoint contract](/endpoint-runtime).
-3. Install your authentication and persistence adapters through [server wiring](/server-wiring).
+1. Replace the example map with a declared [response shape](/httpapi/response-projection).
+2. Add authorization, timeouts, limits, and operation metadata in the [endpoint contract](/httpapi/endpoint-runtime).
+3. Install your authentication and persistence adapters through [server wiring](/httpapi/server-wiring).

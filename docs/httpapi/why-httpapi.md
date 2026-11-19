@@ -31,5 +31,5 @@ Those decisions still belong to the domain service, where current application st
 OpenAPI is useful for client generation and API discovery, but it cannot represent every runtime rule without extensions or loss. HTTPAPI therefore transcribes OpenAPI from the executable contract. OpenAPI does not become the runtime model.
 
 <Tip>
-  If you want a Go service to execute and publish the same contract, start with the [quickstart](/quickstart). If you need a language-neutral implementation contract, use the [HTTPAPI specification](/specification).
+  If you want a Go service to execute and publish the same contract, start with the [quickstart](/httpapi/quickstart). If you need a language-neutral implementation contract, use the [HTTPAPI specification](/httpapi/specification).
 </Tip>

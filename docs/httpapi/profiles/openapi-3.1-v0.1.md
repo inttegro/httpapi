@@ -166,6 +166,6 @@ not conform to this profile even if the resulting document is valid OpenAPI.
 
 ## Appendix A. References
 
-- [HTTPAPI Specification 0.2](/specification/v0.2)
+- [HTTPAPI Specification 0.2](/httpapi/specification/v0.2)
 - [OpenAPI Specification 3.1.1](https://spec.openapis.org/oas/v3.1.1.html)
 - [JSON Schema Draft 2020-12](https://json-schema.org/draft/2020-12)

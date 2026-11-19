@@ -58,4 +58,4 @@ Runtime response projection remains the authority boundary. Do not use the gener
 
 `srv.DescribeGCPAPIGateway()` emits a Swagger 2.0 document for Google Cloud API Gateway and includes routing metadata required by that deployment target. Direct transcribers in `openapi/openapi31` and `openapi/gcpapigateway` are useful for tests or tools that intentionally work with one endpoint group.
 
-The language-independent specification defines transcription behavior separately from target profiles. See the [OpenAPI 3.1 profile](/profiles/openapi-3.1-v0.1) when implementing or assessing portable conformance.
+The language-independent specification defines transcription behavior separately from target profiles. See the [OpenAPI 3.1 profile](/httpapi/profiles/openapi-3.1-v0.1) when implementing or assessing portable conformance.

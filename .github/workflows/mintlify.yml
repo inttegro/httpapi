@@ -50,4 +50,4 @@ jobs:
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
       - name: Deploy to Mintlify
-        run: npx --yes mint@latest deploy --subdomain inttegro-httpapi --directory docs
+        run: npx --yes mint@latest deploy --subdomain true-sense-inc --directory docs

@@ -6,7 +6,7 @@
 	"logo": {
 		"light": "/logo-dark.svg",
 		"dark": "/logo-light.svg",
-		"href": "/"
+		"href": "/httpapi"
 	},
 	"favicon": "/favicon.svg",
 	"colors": {
@@ -16,14 +16,20 @@
 	},
 	"seo": {
 		"metatags": {
-			"canonical": "https://os.inttegro.dev/httpapi"
+			"canonical": "https://os.inttegro.dev"
 		}
 	},
+	"redirects": [
+		{
+			"source": "/",
+			"destination": "/httpapi"
+		}
+	],
 	"navigation": {
 		"groups": [
 			{
 				"group": "Start here",
-				"pages": ["why-httpapi", "quickstart", "mental-model"]
+				"pages": ["httpapi/why-httpapi", "httpapi/quickstart", "httpapi/mental-model"]
 			},
 			{
 				"group": "Guides",
@@ -31,36 +37,40 @@
 					{
 						"group": "Contracts",
 						"pages": [
-							"request-contracts",
-							"callers-and-authority",
-							"response-projection",
-							"errors"
+							"httpapi/request-contracts",
+							"httpapi/callers-and-authority",
+							"httpapi/response-projection",
+							"httpapi/errors"
 						]
 					},
 					{
 						"group": "Runtime",
-						"pages": ["endpoint-runtime", "idempotency", "server-wiring"]
+						"pages": [
+							"httpapi/endpoint-runtime",
+							"httpapi/idempotency",
+							"httpapi/server-wiring"
+						]
 					},
 					{
 						"group": "Publishing",
-						"pages": ["openapi-transcription"]
+						"pages": ["httpapi/openapi-transcription"]
 					}
 				]
 			},
 			{
 				"group": "Reference",
 				"pages": [
-					"packages",
-					"current-boundaries",
+					"httpapi/packages",
+					"httpapi/current-boundaries",
 					{
 						"group": "Specification",
 						"pages": [
-							"specification/index",
-							"specification/v0.2",
-							"specification/v0.1"
+							"httpapi/specification/index",
+							"httpapi/specification/v0.2",
+							"httpapi/specification/v0.1"
 						]
 					},
-					"profiles/openapi-3.1-v0.1"
+					"httpapi/profiles/openapi-3.1-v0.1"
 				]
 			}
 		]
@@ -74,8 +84,8 @@
 			{
 				"header": "HTTPAPI",
 				"items": [
-					{"label": "Quickstart", "href": "/quickstart"},
-					{"label": "Specification", "href": "/specification"},
+					{"label": "Quickstart", "href": "/httpapi/quickstart"},
+					{"label": "Specification", "href": "/httpapi/specification"},
 					{"label": "Source code", "href": "https://github.com/inttegro/httpapi"}
 				]
 			},

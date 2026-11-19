@@ -44,4 +44,4 @@ These are implementation limits, not silent claims about the language-independen
 
 Confirm that every required adapter is installed, idempotency storage is shared by all instances, caller labels come only from trusted code, request limits are enforced while reading, public errors redact private causes, and generated documents are reviewed for declared transcription loss.
 
-Use [server wiring](/server-wiring) for the startup path and [HTTPAPI 0.2](/specification/v0.2) for the normative security requirements.
+Use [server wiring](/httpapi/server-wiring) for the startup path and [HTTPAPI 0.2](/httpapi/specification/v0.2) for the normative security requirements.

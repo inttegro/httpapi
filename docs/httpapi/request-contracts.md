@@ -74,4 +74,4 @@ The request contract can prove that `customer_id` has the right wire format. It 
   A parameter restricted with `AvailableTo` is reported as unexpected when another caller sends it. That preserves the hidden contract instead of revealing the parameter's name or allowed callers.
 </Note>
 
-Next, define [caller authority](/callers-and-authority) and [response shapes](/response-projection) with the same caller labels.
+Next, define [caller authority](/httpapi/callers-and-authority) and [response shapes](/httpapi/response-projection) with the same caller labels.

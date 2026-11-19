@@ -70,4 +70,4 @@ The server applies bounded defaults for header reads, full request reads, respon
 
 `Addr`, `Host`, and `Port` control where the process listens. `server.Description` defines what clients and generated gateway documents see: public URLs, version, path prefix, contact details, and default backend routing.
 
-Continue with [OpenAPI transcription](/openapi-transcription) after the mounted server has a public description.
+Continue with [OpenAPI transcription](/httpapi/openapi-transcription) after the mounted server has a public description.
