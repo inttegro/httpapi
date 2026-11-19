@@ -1,0 +1,92 @@
+{
+	"$schema": "https://mintlify.com/docs.json",
+	"theme": "luma",
+	"name": "HTTPAPI",
+	"description": "Delivering conversations.",
+	"logo": {
+		"light": "/logo-dark.svg",
+		"dark": "/logo-light.svg",
+		"href": "/"
+	},
+	"favicon": "/favicon.svg",
+	"colors": {
+		"primary": "#2563EB",
+		"light": "#3B82F6",
+		"dark": "#60A5FA"
+	},
+	"seo": {
+		"metatags": {
+			"canonical": "https://os.inttegro.dev/httpapi"
+		}
+	},
+	"navigation": {
+		"groups": [
+			{
+				"group": "Start here",
+				"pages": ["why-httpapi", "quickstart", "mental-model"]
+			},
+			{
+				"group": "Guides",
+				"pages": [
+					{
+						"group": "Contracts",
+						"pages": [
+							"request-contracts",
+							"callers-and-authority",
+							"response-projection",
+							"errors"
+						]
+					},
+					{
+						"group": "Runtime",
+						"pages": ["endpoint-runtime", "idempotency", "server-wiring"]
+					},
+					{
+						"group": "Publishing",
+						"pages": ["openapi-transcription"]
+					}
+				]
+			},
+			{
+				"group": "Reference",
+				"pages": [
+					"packages",
+					"current-boundaries",
+					{
+						"group": "Specification",
+						"pages": [
+							"specification/index",
+							"specification/v0.2",
+							"specification/v0.1"
+						]
+					},
+					"profiles/openapi-3.1-v0.1"
+				]
+			}
+		]
+	},
+	"footer": {
+		"socials": {
+			"website": "https://inttegro.com",
+			"github": "https://github.com/inttegro/httpapi"
+		},
+		"links": [
+			{
+				"header": "HTTPAPI",
+				"items": [
+					{"label": "Quickstart", "href": "/quickstart"},
+					{"label": "Specification", "href": "/specification"},
+					{"label": "Source code", "href": "https://github.com/inttegro/httpapi"}
+				]
+			},
+			{
+				"header": "Inttegro",
+				"items": [
+					{"label": "Commerce platform", "href": "https://inttegro.com"},
+					{"label": "Developer Studio", "href": "https://studio.inttegro.dev"},
+					{"label": "Simile", "href": "https://os.inttegro.dev/simile"}
+				]
+			}
+		]
+	}
+}

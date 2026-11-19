@@ -1,0 +1,46 @@
+---
+title: Delivering conversations
+description: Define an endpoint once, then use the same contract to parse requests, enforce runtime policy, shape responses, and publish API descriptions.
+---
+
+HTTPAPI keeps an endpoint's wire contract and runtime rules in one Go definition. Your handler receives accepted input, returns a response, and leaves HTTP policy to the runtime.
+
+<CardGroup cols={2}>
+  <Card title="Run your first endpoint" icon="play" href="/quickstart">
+    Install the module and serve a typed JSON endpoint locally.
+  </Card>
+  <Card title="Understand the model" icon="diagram-project" href="/mental-model">
+    Put parsing, runtime policy, business work, and response shaping in the right layers.
+  </Card>
+  <Card title="Design request contracts" icon="brackets-curly" href="/request-contracts">
+    Turn incoming JSON into complete Go values without a second validation pass.
+  </Card>
+  <Card title="Publish OpenAPI" icon="file-code" href="/openapi-transcription">
+    Transcribe the contracts mounted by the running service.
+  </Card>
+</CardGroup>
+
+## What you define once
+
+An endpoint can carry its method and route, request parser, response shapes, caller access, authorization mode, idempotency, request limits, timeouts, and operation metadata.
+
+HTTPAPI uses that definition to:
+
+- reject unacceptable requests before the handler runs;
+- expose only response fields available to the active caller;
+- record a consistent completion outcome; and
+- transcribe the mounted API without a second handwritten schema.
+
+## What stays in your service
+
+Your application still owns identity verification, domain authorization, databases, transactions, business workflows, observability backends, and deployment. HTTPAPI provides explicit interfaces where those systems meet the HTTP boundary.
+
+<Note>
+  These guides document the Go reference implementation. The [HTTPAPI 0.2 specification](/specification/v0.2) defines portable observable behavior and is authoritative for conformance.
+</Note>
+
+## Choose your next step
+
+- New to HTTPAPI? Complete the [quickstart](/quickstart), then read the [mental model](/mental-model).
+- Migrating an existing service? Start with [endpoint runtime](/endpoint-runtime) and [server wiring](/server-wiring).
+- Implementing HTTPAPI in another language? Read the [specification](/specification) instead of copying Go package details.
