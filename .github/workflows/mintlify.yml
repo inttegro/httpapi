@@ -1,0 +1,53 @@
+name: Deploy documentation
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - "docs/**"
+      - "spec/**"
+      - "scripts/check-docs.sh"
+      - ".github/workflows/mintlify.yml"
+  pull_request:
+    paths:
+      - "docs/**"
+      - "spec/**"
+      - "scripts/check-docs.sh"
+      - ".github/workflows/mintlify.yml"
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: httpapi-documentation-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Verify normative documentation mirrors
+        run: bash scripts/check-docs.sh
+      - name: Test the Go reference implementation
+        run: go test ./...
+      - name: Validate documentation
+        working-directory: docs
+        run: npx --yes mint@latest validate
+      - name: Check documentation links
+        working-directory: docs
+        run: npx --yes mint@latest broken-links --check-anchors
+
+  deploy:
+    if: github.event_name == 'push'
+    needs: verify
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Deploy to Mintlify
+        run: npx --yes mint@latest deploy --subdomain inttegro-httpapi --directory docs
